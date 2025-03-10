@@ -1,0 +1,13 @@
+{
+  "name": "NotificationsService",
+  "$schema": "../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "NotificationsService/cdk",
+  "projectType": "application",
+  "tags": ["cdk-app"],
+  "implicitDependencies": [],
+  "targets": {
+    "lint": {
+      "command": "eslint NotificationsService/**/*.ts"
+    }
+  }
+}

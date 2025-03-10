@@ -1,0 +1,25 @@
+{
+  "name": "NotificationsService-e2e",
+  "$schema": "../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "NotificationsService-e2e/src",
+  "projectType": "application",
+  "implicitDependencies": ["NotificationsService"],
+  "targets": {
+    "e2e": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
+      "cache": false,
+      "options": {
+        "jestConfig": "NotificationsService-e2e/jest.config.ts",
+        "passWithNoTests": true
+      }
+    },
+    "generate-event": {
+      "executor": "nx-serverless-cdk:generate-event",
+      "options": {}
+    },
+    "lint": {
+      "command": "eslint NotificationsService-e2e/**/*.ts"
+    }
+  }
+}

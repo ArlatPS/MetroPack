@@ -1,0 +1,50 @@
+{
+  "$schema": "./node_modules/nx/schemas/nx-schema.json",
+  "defaultBase": "master",
+  "namedInputs": {
+    "default": ["{projectRoot}/**/*", "sharedGlobals"],
+    "production": [
+      "default",
+      "!{projectRoot}/.eslintrc.json",
+      "!{projectRoot}/eslint.config.js",
+      "!{projectRoot}/**/?(*.)+(spec|test).[jt]s?(x)?(.snap)",
+      "!{projectRoot}/tsconfig.spec.json",
+      "!{projectRoot}/jest.config.[jt]s",
+      "!{projectRoot}/src/test-setup.[jt]s",
+      "!{projectRoot}/test-setup.[jt]s"
+    ],
+    "sharedGlobals": ["{workspaceRoot}/.github/workflows/ci.yml"]
+  },
+  "nxCloudId": "67cdde2a4e114521ed89d18d",
+  "plugins": [
+    {
+      "plugin": "nx-serverless-cdk/plugin",
+      "options": {
+        "cdkTargetName": "cdk",
+        "deployTargetName": "deploy",
+        "deployAllTargetName": "deploy-all",
+        "destroyTargetName": "destroy",
+        "diffTargetName": "diff",
+        "lsTargetName": "ls",
+        "synthTargetName": "synth",
+        "watchTargetName": "watch",
+        "generateEventTargetName": "generate-event",
+        "invokeTargetName": "invoke",
+        "startApiTargetName": "start-api",
+        "startLambdaTargetName": "start-lambda"
+      }
+    },
+    {
+      "plugin": "@nx/eslint/plugin",
+      "options": {
+        "targetName": "lint"
+      }
+    },
+    {
+      "plugin": "@nx/jest/plugin",
+      "options": {
+        "targetName": "test"
+      }
+    }
+  ]
+}

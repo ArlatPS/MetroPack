@@ -40,26 +40,18 @@ Resources:
     Properties:
       TableName: VendorTable
       AttributeDefinitions:
-        - AttributeName: eventId
-          AttributeType: S
         - AttributeName: vendorId
           AttributeType: S
+        - AttributeName: eventOrder
+          AttributeType: N
       KeySchema:
-        - AttributeName: eventId
+        - AttributeName: vendorId
           KeyType: HASH
+        - AttributeName: eventOrder
+          KeyType: RANGE
       ProvisionedThroughput:
         ReadCapacityUnits: 1
         WriteCapacityUnits: 1
-      GlobalSecondaryIndexes:
-        - IndexName: VendorIdIndex
-          KeySchema:
-            - AttributeName: vendorId
-              KeyType: HASH
-          Projection:
-            ProjectionType: ALL
-          ProvisionedThroughput:
-            ReadCapacityUnits: 1
-            WriteCapacityUnits: 1
 
 Outputs:
   WebEndpoint:

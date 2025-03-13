@@ -5,7 +5,7 @@ Transform:
 - AWS::Serverless-2016-10-31
 
 Resources:
-  getVendorFunction:
+  GetVendorFunction:
     Type: AWS::Serverless::Function
     Properties:
       Handler: src/handlers/getVendor.handler
@@ -18,19 +18,48 @@ Resources:
         Api:
           Type: Api
           Properties:
-            Path: /vendor
+            Path: /vendor/{vendorId}
             Method: GET
             Auth:
               Authorizer: AWS_IAM
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref VendorTable
       Environment:
         Variables:
-          MESSAGE: 'AWS'
+          VENDOR_TABLE: !Ref VendorTable
     Metadata:
       BuildMethod: esbuild
       BuildProperties:
         Minify: true
         Target: es2020
         Sourcemap: true
+
+  VendorTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: VendorTable
+      AttributeDefinitions:
+        - AttributeName: eventId
+          AttributeType: S
+        - AttributeName: vendorId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: eventId
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+      GlobalSecondaryIndexes:
+        - IndexName: VendorIdIndex
+          KeySchema:
+            - AttributeName: vendorId
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+          ProvisionedThroughput:
+            ReadCapacityUnits: 1
+            WriteCapacityUnits: 1
 
 Outputs:
   WebEndpoint:

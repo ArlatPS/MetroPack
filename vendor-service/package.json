@@ -1,7 +1,7 @@
 {
-    "name": "hello_world",
+    "name": "vendor_service",
     "version": "1.0.0",
-    "description": "hello world sample for NodeJS",
+    "description": "VendorService for MetroPack",
     "scripts": {
         "unit": "jest",
         "lint": "eslint src/ --quiet --fix",

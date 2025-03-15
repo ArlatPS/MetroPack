@@ -42,8 +42,7 @@ export const handler = async (event: APIGatewayProxyEvent, context: Context): Pr
         return {
             statusCode: 500,
             body: JSON.stringify({
-                message: 'some error happened',
-                err: JSON.stringify(err),
+                message: 'Internal server error',
             }),
         };
     }

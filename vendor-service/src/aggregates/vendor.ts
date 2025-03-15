@@ -1,8 +1,8 @@
-import { DynamoDBDocumentClient, QueryCommand } from '@aws-sdk/lib-dynamodb';
-import { PutItemCommand, PutItemCommandInput } from '@aws-sdk/client-dynamodb';
+import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 import { randomUUID } from 'crypto';
 import { createVendorDetailsChangedEvent, createVendorRegisteredEvent } from '../helpers/eventHelpers';
 import { Context } from 'aws-lambda';
+import { getVendorEvents, putVendorEvent } from '../datasources/vendorTable';
 
 interface VendorEventMetadata {
     domain: 'customerService';
@@ -51,7 +51,7 @@ export interface VendorDetailsChangedEvent extends VendorEventBase {
 export type VendorEvent = VendorRegisteredEvent | VendorDetailsChangedEvent;
 
 export class Vendor {
-    private id = '';
+    private vendorId = '';
     private email = '';
     private name = '';
     private readonly ddbDocClient: DynamoDBDocumentClient;
@@ -63,9 +63,9 @@ export class Vendor {
         this.context = context;
     }
 
-    public getDetails(): { id: string; email: string; name: string } {
+    public getDetails(): { vendorId: string; email: string; name: string } {
         return {
-            id: this.id,
+            vendorId: this.vendorId,
             email: this.email,
             name: this.name,
         };
@@ -75,49 +75,13 @@ export class Vendor {
         const vendorId = randomUUID();
         const event = createVendorRegisteredEvent(vendorId, name, email, this.context);
 
-        const vendorTable = process.env.VENDOR_TABLE;
-
-        if (!vendorTable) {
-            throw new Error('Vendor table is not set');
-        }
-
-        const params: PutItemCommandInput = {
-            TableName: vendorTable,
-            Item: {
-                vendorId: { S: vendorId },
-                eventOrder: { N: '0' },
-                event: { S: JSON.stringify(event) },
-            },
-        };
-
-        await this.ddbDocClient.send(new PutItemCommand(params));
+        await putVendorEvent(vendorId, 0, event, this.ddbDocClient);
 
         this.projectEvents([event]);
     }
 
     public async loadState(vendorId: string): Promise<void> {
-        const vendorTable = process.env.VENDOR_TABLE;
-
-        if (!vendorTable) {
-            throw new Error('Vendor table is not set');
-        }
-
-        const params = {
-            TableName: vendorTable,
-            KeyConditionExpression: 'vendorId = :vendorId',
-            ExpressionAttributeValues: {
-                ':vendorId': vendorId,
-            },
-        };
-
-        const data = await this.ddbDocClient.send(new QueryCommand(params));
-        const items = data.Items;
-
-        if (!items || items.length === 0) {
-            throw new Error('Vendor not found.');
-        }
-
-        const events: VendorEvent[] = items.map((item) => JSON.parse(item.event));
+        const events = await getVendorEvents(vendorId, this.ddbDocClient);
 
         this.events = events;
 
@@ -125,26 +89,9 @@ export class Vendor {
     }
 
     public async changeDetails(name: string, email: string): Promise<void> {
-        const event = createVendorDetailsChangedEvent(this.id, this.context, name, email);
+        const event = createVendorDetailsChangedEvent(this.vendorId, this.context, name, email);
 
-        const vendorTable = process.env.VENDOR_TABLE;
-
-        if (!vendorTable) {
-            throw new Error('Vendor table is not set');
-        }
-
-        const eventOrder = this.events.length;
-
-        const params: PutItemCommandInput = {
-            TableName: vendorTable,
-            Item: {
-                vendorId: { S: this.id },
-                eventOrder: { N: eventOrder.toString() },
-                event: { S: JSON.stringify(event) },
-            },
-        };
-
-        await this.ddbDocClient.send(new PutItemCommand(params));
+        await putVendorEvent(this.vendorId, this.events.length, event, this.ddbDocClient);
 
         this.projectEvents([event]);
     }
@@ -165,7 +112,7 @@ export class Vendor {
     };
 
     private applyVendorRegistered(event: VendorRegisteredEvent): void {
-        this.id = event.detail.data.vendorId;
+        this.vendorId = event.detail.data.vendorId;
         this.email = event.detail.data.email;
         this.name = event.detail.data.name;
     }

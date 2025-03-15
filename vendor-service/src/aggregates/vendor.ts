@@ -1,3 +1,5 @@
+import { DynamoDBDocumentClient, QueryCommand } from '@aws-sdk/lib-dynamodb';
+
 interface VendorRegisteredEvent {
     metadata: {
         name: 'vendorRegistered';
@@ -26,9 +28,10 @@ export class Vendor {
     private id = '';
     private email = '';
     private name = '';
+    private ddbDocClient: DynamoDBDocumentClient | undefined;
 
-    constructor(events: VendorEvent[]) {
-        this.loadState(events);
+    constructor(ddbDocClient: DynamoDBDocumentClient) {
+        this.ddbDocClient = ddbDocClient;
     }
 
     public getDetails(): { id: string; email: string; name: string } {
@@ -39,7 +42,38 @@ export class Vendor {
         };
     }
 
-    private loadState(events: VendorEvent[]): void {
+    public async loadState(vendorId: string): Promise<void> {
+        const vendorTable = process.env.VENDOR_TABLE;
+
+        if (!vendorTable) {
+            throw new Error('Vendor table is not set');
+        }
+
+        const params = {
+            TableName: vendorTable,
+            KeyConditionExpression: 'vendorId = :vendorId',
+            ExpressionAttributeValues: {
+                ':vendorId': vendorId,
+            },
+        };
+
+        if (!this.ddbDocClient) {
+            throw new Error('DynamoDBDocumentClient not set');
+        }
+
+        const data = await this.ddbDocClient.send(new QueryCommand(params));
+        const items = data.Items;
+
+        if (!items || items.length === 0) {
+            throw new Error('Vendor not found.');
+        }
+
+        const events: VendorEvent[] = items.map((item: any) => JSON.parse(item.event).detail);
+
+        this.projectEvents(events);
+    }
+
+    private projectEvents(events: VendorEvent[]): void {
         events.forEach((event) => {
             const handler = this.eventHandlers[event.metadata.name];
             if (handler) {

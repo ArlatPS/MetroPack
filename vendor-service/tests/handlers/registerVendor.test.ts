@@ -1,12 +1,12 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult, Context } from 'aws-lambda';
-import { handler } from '../../src/handlers/getVendor';
+import { handler } from '../../src/handlers/registerVendor';
 import { Vendor } from '../../src/aggregates/vendor';
 import { expect, describe, it, jest } from '@jest/globals';
 
 jest.mock('../../src/aggregates/vendor');
 jest.mock('@aws-sdk/lib-dynamodb');
 
-describe('Unit test for getVendor handler', function () {
+describe('Unit test for registerVendor handler', function () {
     const mockContext = {} as Context;
 
     global.console.error = jest.fn();
@@ -15,16 +15,16 @@ describe('Unit test for getVendor handler', function () {
         jest.clearAllMocks();
     });
 
-    it('returns vendor details successfully', async () => {
+    it('registers a vendor successfully', async () => {
         const event: APIGatewayProxyEvent = {
-            httpMethod: 'get',
-            pathParameters: { vendorId: '123' },
-            body: '',
+            httpMethod: 'post',
+            pathParameters: {},
+            body: JSON.stringify({ name: 'Test Vendor', email: 'test@vendor.com' }),
             headers: {},
             isBase64Encoded: false,
             multiValueHeaders: {},
             multiValueQueryStringParameters: {},
-            path: '/vendor/123',
+            path: '/vendor',
             queryStringParameters: {},
             requestContext: {} as any,
             resource: '',
@@ -32,7 +32,7 @@ describe('Unit test for getVendor handler', function () {
         };
 
         const mockVendor = {
-            loadState: jest.fn().mockReturnValue(undefined),
+            register: jest.fn().mockReturnValue(undefined),
             getDetails: jest.fn().mockReturnValue({ vendorId: '123', name: 'Test Vendor', email: 'test@vendor.com' }),
         };
         (Vendor as jest.Mock).mockImplementation(() => mockVendor);
@@ -41,14 +41,14 @@ describe('Unit test for getVendor handler', function () {
 
         expect(result.statusCode).toEqual(200);
         expect(result.body).toEqual(JSON.stringify({ vendorId: '123', name: 'Test Vendor', email: 'test@vendor.com' }));
-        expect(mockVendor.loadState).toHaveBeenCalledWith('123');
+        expect(mockVendor.register).toHaveBeenCalledWith('Test Vendor', 'test@vendor.com');
     });
 
-    it('returns 400 if vendorId is missing', async () => {
+    it('returns 400 if name or email is missing', async () => {
         const event: APIGatewayProxyEvent = {
-            httpMethod: 'get',
+            httpMethod: 'post',
             pathParameters: {},
-            body: '',
+            body: JSON.stringify({ name: 'Test Vendor' }),
             headers: {},
             isBase64Encoded: false,
             multiValueHeaders: {},
@@ -63,19 +63,19 @@ describe('Unit test for getVendor handler', function () {
         const result: APIGatewayProxyResult = await handler(event, mockContext);
 
         expect(result.statusCode).toEqual(400);
-        expect(result.body).toEqual(JSON.stringify({ message: 'vendorId is required' }));
+        expect(result.body).toEqual(JSON.stringify({ message: 'name and email are required' }));
     });
 
     it('returns 500 on internal server error', async () => {
         const event: APIGatewayProxyEvent = {
-            httpMethod: 'get',
-            pathParameters: { vendorId: '123' },
-            body: '',
+            httpMethod: 'post',
+            pathParameters: {},
+            body: JSON.stringify({ name: 'Test Vendor', email: 'test@vendor.com' }),
             headers: {},
             isBase64Encoded: false,
             multiValueHeaders: {},
             multiValueQueryStringParameters: {},
-            path: '/vendor/123',
+            path: '/vendor',
             queryStringParameters: {},
             requestContext: {} as any,
             resource: '',
@@ -83,7 +83,7 @@ describe('Unit test for getVendor handler', function () {
         };
 
         const mockVendor = {
-            loadState: jest.fn().mockImplementation(() => {
+            register: jest.fn().mockImplementation(() => {
                 throw new Error('Internal server error');
             }),
             getDetails: jest.fn(),

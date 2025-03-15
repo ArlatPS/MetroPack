@@ -1,8 +1,8 @@
 {
   "version": "1",
   "id": "12345678-1234-1234-1234-123456789012",
-  "detail-type": "vendorService.vendorRegistered",
-  "source": "vendorService",
+  "detail-type": "vendorService.vendorDetailsChanged",
+  "source": "lambdaName",
   "time": "2022-01-01T00:00:00Z",
   "region": "eu-central-1",
   "resources": [
@@ -15,7 +15,7 @@
       "service": "vendorService",
       "category": "domainEvent",
       "type": "data",
-      "name": "vendorRegistered"
+      "name": "vendorDetailsChanged"
     },
     "data": {
         "vendorId": "12345678-1234-1234-1234-123456789012",

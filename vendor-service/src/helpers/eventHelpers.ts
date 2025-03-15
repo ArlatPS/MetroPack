@@ -11,7 +11,7 @@ export function createVendorRegisteredEvent(
     return {
         version: '1',
         id: randomUUID(),
-        detailType: 'vendorRegistered',
+        detailType: 'vendorService.vendorRegistered',
         source: context.functionName,
         time: new Date().toISOString(),
         region: 'us-east-1',
@@ -43,7 +43,7 @@ export function createVendorDetailsChangedEvent(
     const event: VendorDetailsChangedEvent = {
         version: '1',
         id: randomUUID(),
-        detailType: 'vendorDetailsChanged',
+        detailType: 'vendorService.vendorDetailsChanged',
         source: context.functionName,
         time: new Date().toISOString(),
         region: 'us-east-1',

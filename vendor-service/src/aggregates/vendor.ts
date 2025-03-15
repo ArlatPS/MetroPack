@@ -89,6 +89,10 @@ export class Vendor {
     }
 
     public async changeDetails(name: string, email: string): Promise<void> {
+        if (!this.vendorId) {
+            throw new Error('Vendor state is not loaded');
+        }
+
         const event = createVendorDetailsChangedEvent(this.vendorId, this.context, name, email);
 
         await putVendorEvent(this.vendorId, this.events.length, event, this.ddbDocClient);

@@ -38,7 +38,7 @@ export const handler = async (event: APIGatewayProxyEvent, context: Context): Pr
             body: JSON.stringify(vendor.getDetails()),
         };
     } catch (err) {
-        console.log(err);
+        console.error(err);
         return {
             statusCode: 500,
             body: JSON.stringify({

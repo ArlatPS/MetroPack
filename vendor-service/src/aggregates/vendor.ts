@@ -1,4 +1,6 @@
-import { DynamoDBDocumentClient, QueryCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, PutCommandInput, QueryCommand } from '@aws-sdk/lib-dynamodb';
+import { PutItemCommand, PutItemCommandInput } from '@aws-sdk/client-dynamodb';
+import { randomUUID } from 'crypto';
 
 interface VendorRegisteredEvent {
     metadata: {
@@ -28,7 +30,7 @@ export class Vendor {
     private id = '';
     private email = '';
     private name = '';
-    private ddbDocClient: DynamoDBDocumentClient | undefined;
+    private readonly ddbDocClient: DynamoDBDocumentClient | undefined;
 
     constructor(ddbDocClient: DynamoDBDocumentClient) {
         this.ddbDocClient = ddbDocClient;
@@ -40,6 +42,42 @@ export class Vendor {
             email: this.email,
             name: this.name,
         };
+    }
+
+    public async register(name: string, email: string): Promise<void> {
+        const event: VendorRegisteredEvent = {
+            metadata: {
+                name: 'vendorRegistered',
+            },
+            data: {
+                vendorId: randomUUID(),
+                name,
+                email,
+            },
+        };
+
+        const vendorTable = process.env.VENDOR_TABLE;
+
+        if (!vendorTable) {
+            throw new Error('Vendor table is not set');
+        }
+
+        if (!this.ddbDocClient) {
+            throw new Error('DynamoDBDocumentClient not set');
+        }
+
+        const params: PutItemCommandInput = {
+            TableName: vendorTable,
+            Item: {
+                vendorId: { S: event.data.vendorId },
+                eventOrder: { N: '0' },
+                event: { S: JSON.stringify({ detail: event }) },
+            },
+        };
+
+        await this.ddbDocClient.send(new PutItemCommand(params));
+
+        this.projectEvents([event]);
     }
 
     public async loadState(vendorId: string): Promise<void> {

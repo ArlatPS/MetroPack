@@ -1,4 +1,4 @@
-import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
+import { APIGatewayProxyEvent, APIGatewayProxyResult, Context } from 'aws-lambda';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, QueryCommand } from '@aws-sdk/lib-dynamodb';
 import { Vendor, VendorEvent } from '../aggregates/vendor';
@@ -6,7 +6,7 @@ import { Vendor, VendorEvent } from '../aggregates/vendor';
 const client = new DynamoDBClient({});
 const ddbDocClient = DynamoDBDocumentClient.from(client);
 
-export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
+export const handler = async (event: APIGatewayProxyEvent, context: Context): Promise<APIGatewayProxyResult> => {
     try {
         const body = JSON.parse(event.body || '{}');
 
@@ -19,7 +19,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
             };
         }
 
-        const vendor = new Vendor(ddbDocClient);
+        const vendor = new Vendor(ddbDocClient, context);
         await vendor.register(body.name, body.email);
 
         return {

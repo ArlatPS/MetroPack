@@ -1,26 +1,50 @@
-import { DynamoDBDocumentClient, PutCommandInput, QueryCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, QueryCommand } from '@aws-sdk/lib-dynamodb';
 import { PutItemCommand, PutItemCommandInput } from '@aws-sdk/client-dynamodb';
 import { randomUUID } from 'crypto';
+import { createVendorRegisteredEvent } from '../helpers/eventHelpers';
+import { Context } from 'aws-lambda';
 
-interface VendorRegisteredEvent {
-    metadata: {
-        name: 'vendorRegistered';
-    };
-    data: {
-        vendorId: string;
-        name: string;
-        email: string;
+interface VendorEventMetadata {
+    domain: 'customerService';
+    subdomain: 'vendor';
+    service: 'vendorService';
+    category: 'domainEvent';
+    type: 'data';
+}
+
+interface VendorEventBase {
+    version: '1';
+    id: string;
+    detailType: string;
+    source: string;
+    time: string;
+    region: string;
+    resources: string[];
+}
+
+export interface VendorRegisteredEvent extends VendorEventBase {
+    detail: {
+        metadata: {
+            name: 'vendorRegistered';
+        } & VendorEventMetadata;
+        data: {
+            vendorId: string;
+            name: string;
+            email: string;
+        };
     };
 }
 
-interface VendorDetailsChangedEvent {
-    metadata: {
-        name: 'vendorDetailsChanged';
-    };
-    data: {
-        vendorId: string;
-        name?: string;
-        email?: string;
+export interface VendorDetailsChangedEvent extends VendorEventBase {
+    detail: {
+        metadata: {
+            name: 'vendorDetailsChanged';
+        } & VendorEventMetadata;
+        data: {
+            vendorId: string;
+            name?: string;
+            email?: string;
+        };
     };
 }
 
@@ -30,10 +54,12 @@ export class Vendor {
     private id = '';
     private email = '';
     private name = '';
-    private readonly ddbDocClient: DynamoDBDocumentClient | undefined;
+    private readonly ddbDocClient: DynamoDBDocumentClient;
+    private readonly context: Context;
 
-    constructor(ddbDocClient: DynamoDBDocumentClient) {
+    constructor(ddbDocClient: DynamoDBDocumentClient, context: Context) {
         this.ddbDocClient = ddbDocClient;
+        this.context = context;
     }
 
     public getDetails(): { id: string; email: string; name: string } {
@@ -45,16 +71,8 @@ export class Vendor {
     }
 
     public async register(name: string, email: string): Promise<void> {
-        const event: VendorRegisteredEvent = {
-            metadata: {
-                name: 'vendorRegistered',
-            },
-            data: {
-                vendorId: randomUUID(),
-                name,
-                email,
-            },
-        };
+        const vendorId = randomUUID();
+        const event = createVendorRegisteredEvent(vendorId, name, email, this.context);
 
         const vendorTable = process.env.VENDOR_TABLE;
 
@@ -62,16 +80,12 @@ export class Vendor {
             throw new Error('Vendor table is not set');
         }
 
-        if (!this.ddbDocClient) {
-            throw new Error('DynamoDBDocumentClient not set');
-        }
-
         const params: PutItemCommandInput = {
             TableName: vendorTable,
             Item: {
-                vendorId: { S: event.data.vendorId },
+                vendorId: { S: vendorId },
                 eventOrder: { N: '0' },
-                event: { S: JSON.stringify({ detail: event }) },
+                event: { S: JSON.stringify(event) },
             },
         };
 
@@ -95,10 +109,6 @@ export class Vendor {
             },
         };
 
-        if (!this.ddbDocClient) {
-            throw new Error('DynamoDBDocumentClient not set');
-        }
-
         const data = await this.ddbDocClient.send(new QueryCommand(params));
         const items = data.Items;
 
@@ -106,14 +116,14 @@ export class Vendor {
             throw new Error('Vendor not found.');
         }
 
-        const events: VendorEvent[] = items.map((item: any) => JSON.parse(item.event).detail);
+        const events: VendorEvent[] = items.map((item: any) => JSON.parse(item.event));
 
         this.projectEvents(events);
     }
 
     private projectEvents(events: VendorEvent[]): void {
         events.forEach((event) => {
-            const handler = this.eventHandlers[event.metadata.name];
+            const handler = this.eventHandlers[event.detail.metadata.name];
             if (handler) {
                 handler.call(this, event);
             }
@@ -127,18 +137,17 @@ export class Vendor {
     };
 
     private applyVendorRegistered(event: VendorRegisteredEvent): void {
-        console.info('VendorRegistered', JSON.stringify(event.data));
-        this.id = event.data.vendorId;
-        this.email = event.data.email;
-        this.name = event.data.name;
+        this.id = event.detail.data.vendorId;
+        this.email = event.detail.data.email;
+        this.name = event.detail.data.name;
     }
 
     private applyVendorDetailsChanged(event: VendorDetailsChangedEvent): void {
-        if (event.data.email) {
-            this.email = event.data.email;
+        if (event.detail.data.email) {
+            this.email = event.detail.data.email;
         }
-        if (event.data.name) {
-            this.name = event.data.name;
+        if (event.detail.data.name) {
+            this.name = event.detail.data.name;
         }
     }
 }

@@ -1,7 +1,7 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult, Context } from 'aws-lambda';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, QueryCommand } from '@aws-sdk/lib-dynamodb';
-import { Vendor, VendorEvent } from '../aggregates/vendor';
+import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
+import { Vendor } from '../aggregates/vendor';
 
 const client = new DynamoDBClient({});
 const ddbDocClient = DynamoDBDocumentClient.from(client);

@@ -8,7 +8,8 @@ const ddbDocClient = DynamoDBDocumentClient.from(client);
 
 export const handler = async (event: APIGatewayProxyEvent, context: Context): Promise<APIGatewayProxyResult> => {
     try {
-        const vendorId = event.pathParameters?.vendorId;
+        const body = JSON.parse(event.body || '{}');
+        const vendorId = body.vendorId;
 
         if (!vendorId) {
             return {
@@ -19,8 +20,18 @@ export const handler = async (event: APIGatewayProxyEvent, context: Context): Pr
             };
         }
 
+        if (typeof body.name !== 'string' && typeof body.email !== 'string') {
+            return {
+                statusCode: 400,
+                body: JSON.stringify({
+                    message: 'name or email are required',
+                }),
+            };
+        }
+
         const vendor = new Vendor(ddbDocClient, context);
         await vendor.loadState(vendorId);
+        await vendor.changeDetails(body.name, body.email);
 
         return {
             statusCode: 200,

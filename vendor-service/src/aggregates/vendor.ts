@@ -1,7 +1,7 @@
 import { DynamoDBDocumentClient, QueryCommand } from '@aws-sdk/lib-dynamodb';
 import { PutItemCommand, PutItemCommandInput } from '@aws-sdk/client-dynamodb';
 import { randomUUID } from 'crypto';
-import { createVendorRegisteredEvent } from '../helpers/eventHelpers';
+import { createVendorDetailsChangedEvent, createVendorRegisteredEvent } from '../helpers/eventHelpers';
 import { Context } from 'aws-lambda';
 
 interface VendorEventMetadata {
@@ -56,6 +56,7 @@ export class Vendor {
     private name = '';
     private readonly ddbDocClient: DynamoDBDocumentClient;
     private readonly context: Context;
+    private events: VendorEvent[] = [];
 
     constructor(ddbDocClient: DynamoDBDocumentClient, context: Context) {
         this.ddbDocClient = ddbDocClient;
@@ -116,9 +117,36 @@ export class Vendor {
             throw new Error('Vendor not found.');
         }
 
-        const events: VendorEvent[] = items.map((item: any) => JSON.parse(item.event));
+        const events: VendorEvent[] = items.map((item) => JSON.parse(item.event));
+
+        this.events = events;
 
         this.projectEvents(events);
+    }
+
+    public async changeDetails(name: string, email: string): Promise<void> {
+        const event = createVendorDetailsChangedEvent(this.id, this.context, name, email);
+
+        const vendorTable = process.env.VENDOR_TABLE;
+
+        if (!vendorTable) {
+            throw new Error('Vendor table is not set');
+        }
+
+        const eventOrder = this.events.length;
+
+        const params: PutItemCommandInput = {
+            TableName: vendorTable,
+            Item: {
+                vendorId: { S: this.id },
+                eventOrder: { N: eventOrder.toString() },
+                event: { S: JSON.stringify(event) },
+            },
+        };
+
+        await this.ddbDocClient.send(new PutItemCommand(params));
+
+        this.projectEvents([event]);
     }
 
     private projectEvents(events: VendorEvent[]): void {

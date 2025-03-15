@@ -13,7 +13,7 @@ Resources:
       Architectures:
       - x86_64
       MemorySize: 128
-      Timeout: 100
+      Timeout: 5
       Events:
         Api:
           Type: Api
@@ -34,6 +34,7 @@ Resources:
         Minify: true
         Target: es2020
         Sourcemap: true
+
   RegisterVendorFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -42,12 +43,42 @@ Resources:
       Architectures:
         - x86_64
       MemorySize: 128
-      Timeout: 100
+      Timeout: 5
       Events:
         Api:
           Type: Api
           Properties:
             Path: /vendor/register
+            Method: POST
+            Auth:
+              Authorizer: AWS_IAM
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref VendorTable
+      Environment:
+        Variables:
+          VENDOR_TABLE: !Ref VendorTable
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+
+  UpdateVendorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/updateVendor.handler
+      Runtime: nodejs22.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 5
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /vendor/update
             Method: POST
             Auth:
               Authorizer: AWS_IAM

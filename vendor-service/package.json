@@ -4,7 +4,7 @@
     "description": "VendorService for MetroPack",
     "scripts": {
         "unit": "jest",
-        "lint": "eslint src/ --quiet --fix",
+        "lint": "eslint src/ --fix",
         "compile": "tsc",
         "test": "npm run compile && npm run unit"
     },

@@ -1,0 +1,102 @@
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>ORS Route on Leaflet Map</title>
+        <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+        <style>
+            #map {
+                height: 600px;
+                width: 100%;
+            }
+        </style>
+    </head>
+    <body>
+    <div id="map"></div>
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script>
+        // ORS output
+        const orsOutput = {
+            "type": "FeatureCollection",
+            "bbox": [8.681445, 49.41461, 8.690123, 49.420514],
+            "features": [
+                {
+                    "bbox": [8.681445, 49.41461, 8.690123, 49.420514],
+                    "type": "Feature",
+                    "properties": {
+                        "segments": [
+                            {
+                                "distance": 1365.2,
+                                "duration": 315.2,
+                                "steps": [
+                                    // Steps omitted for brevity
+                                ]
+                            }
+                        ],
+                        "way_points": [0, 18],
+                        "summary": {
+                            "distance": 1365.2,
+                            "duration": 315.2
+                        }
+                    },
+                    "geometry": {
+                        "coordinates": [
+                            [8.681495, 49.41461],
+                            [8.681445, 49.415755],
+                            [8.681509, 49.416088],
+                            [8.681674, 49.416601],
+                            [8.681873, 49.417276],
+                            [8.681882, 49.417391],
+                            [8.682461, 49.417389],
+                            [8.68269, 49.417389],
+                            [8.682782, 49.417388],
+                            [8.683596, 49.417386],
+                            [8.685382, 49.417368],
+                            [8.68504, 49.419273],
+                            [8.686507, 49.41943],
+                            [8.687109, 49.419488],
+                            [8.688398, 49.41963],
+                            [8.690123, 49.419833],
+                            [8.689854, 49.420217],
+                            [8.689653, 49.420514],
+                            [8.687871, 49.420322]
+                        ],
+                        "type": "LineString"
+                    }
+                }
+            ],
+            "metadata": {
+                "attribution": "openrouteservice.org, OpenStreetMap contributors, tmc - BASt",
+                "service": "routing",
+                "timestamp": 1742126435278,
+                "query": {
+                    "coordinates": [
+                        [8.681495, 49.41461],
+                        [8.687872, 49.420318]
+                    ],
+                    "profile": "driving-car",
+                    "format": "json"
+                },
+                "engine": {
+                    "version": "8.0.0",
+                    "build_date": "2024-03-21T13:55:54Z",
+                    "graph_date": "2025-03-16T11:59:06Z"
+                }
+            }
+        };
+
+        // Initialize the map
+        const map = L.map('map').setView([49.41461, 8.681495], 14);
+
+        // Add OpenStreetMap tile layer
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        // Extract coordinates from ORS output
+        const coordinates = orsOutput.features[0].geometry.coordinates.map(coord => [coord[1], coord[0]]);
+
+        // Add polyline to the map
+        L.polyline(coordinates, { color: 'blue' }).addTo(map);
+    </script>
+    </body>
+    </html>

@@ -1,5 +1,8 @@
 # CHANGELOG
 
+## [0.3.0] - 2025-03-16
+- Initialised ors with vroom and openStreetMap.
+
 ## [0.2.0] - 2025-03-15
 - `Vendor` aggregate in `vendor-service` based on event-sourced DynamoDB table.
 

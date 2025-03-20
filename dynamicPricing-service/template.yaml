@@ -1,0 +1,136 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: >-
+  dynamicPricing-service
+Transform:
+  - AWS::Serverless-2016-10-31
+
+Resources:
+  # API Gateway (REST API)
+  ApiGateway:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: DynamicPricingServiceApi
+      Description: REST API for dynamic pricing service
+      FailOnWarnings: true
+
+  # API Gateway Resource (Path: /putEvent)
+  ApiResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref ApiGateway
+      ParentId: !GetAtt ApiGateway.RootResourceId
+      PathPart: putEvent
+
+  # IAM Role for API Gateway to call EventBridge
+  ApiGatewayIAMRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: apigateway.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: ApiGatewayEventBridgePolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: events:PutEvents
+                Resource: !GetAtt EventBus.Arn
+
+  # API Gateway Integration with EventBridge
+  ApiMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ApiGateway
+      ResourceId: !Ref ApiResource
+      HttpMethod: POST
+      AuthorizationType: AWS_IAM
+      Integration:
+        Type: AWS
+        IntegrationHttpMethod: POST
+        Uri: !Sub "arn:aws:apigateway:${AWS::Region}:events:action/PutEvents"
+        Credentials: !GetAtt ApiGatewayIAMRole.Arn
+        RequestTemplates:
+          application/json: |
+            {
+              "Entries": [
+                {
+                  "EventBusName": "DynamicPricingServiceBus",
+                  "Source": $input.json('$.source'),
+                  "DetailType": $input.json('$.detail-type'),
+                  "Detail": $input.json('$.detail')
+                }
+              ]
+            }
+        RequestParameters:
+          integration.request.header.X-Amz-Target: "'AWSEvents.PutEvents'"
+        PassthroughBehavior: NEVER
+        IntegrationResponses:
+          - StatusCode: "200"
+            ResponseTemplates:
+              application/json: |
+                { "message": "Event sent successfully" }
+      RequestParameters:
+        method.request.header.Content-Type: false
+      MethodResponses:
+        - StatusCode: "200"
+          ResponseModels:
+            application/json: "Empty"
+          ResponseParameters:
+            method.response.header.Content-Type: true
+
+  # API Gateway Deployment
+  ApiDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn: ApiMethod
+    Properties:
+      RestApiId: !Ref ApiGateway
+
+  # API Gateway Stage
+  ApiStage:
+    Type: AWS::ApiGateway::Stage
+    Properties:
+      StageName: prod
+      RestApiId: !Ref ApiGateway
+      DeploymentId: !Ref ApiDeployment
+
+  # EventBridge Bus
+  EventBus:
+    Type: AWS::Events::EventBus
+    Properties:
+      Name: DynamicPricingServiceBus
+
+  OfferAcceptedFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: 'src/handlers/offerAccepted.handler'
+      Runtime: 'nodejs22.x'
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 5
+      Policies:
+        - AWSLambdaBasicExecutionRole
+      Events:
+        OfferAcceptedRule:
+          Type: EventBridgeRule
+          Properties:
+            EventBusName: !Ref EventBus
+            Pattern:
+              detail-type:
+                - 'dynamicPricingService.offerAccepted'
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+
+Outputs:
+  WebEndpoint:
+    Description: API Gateway endpoint URL for prod stage
+    Value: !Sub "https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/prod/putEvent"

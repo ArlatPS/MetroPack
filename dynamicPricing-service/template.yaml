@@ -5,18 +5,16 @@ Transform:
   - AWS::Serverless-2016-10-31
 
 Resources:
-  # API Gateway (REST API)
   ApiGateway:
     Type: AWS::Serverless::Api
     Properties:
       Name: DynamicPricingServiceApi
       StageName: prod
 
-  # Lambda function that sends events to EventBridge
   EventBridgeLambda:
     Type: AWS::Serverless::Function
     Properties:
-      Handler: src/handlers/eventBridgeHandler.handler
+      Handler: src/handlers/eventBridge.handler
       Runtime: nodejs22.x
       Architectures:
         - x86_64
@@ -45,22 +43,71 @@ Resources:
         Target: es2020
         Sourcemap: true
 
-  # EventBridge Bus
   EventBus:
     Type: AWS::Events::EventBus
     Properties:
       Name: DynamicPricingServiceBus
 
-  # Lambda function triggered when an offer is accepted
+  CreateOfferFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/createOffer.handler
+      Runtime: nodejs22.x
+      Architectures:
+        - x86_64
+      MemorySize: 256
+      Timeout: 15
+      Policies:
+        - AWSLambdaBasicExecutionRole
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Path: /createOffer
+            Method: POST
+            RestApiId: !Ref ApiGateway
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+
   OfferAcceptedFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Handler: 'src/handlers/offerAccepted.handler'
-      Runtime: 'nodejs22.x'
+      Handler: src/handlers/offerAccepted.handler
+      Runtime: nodejs22.x
       Architectures:
         - x86_64
       MemorySize: 128
       Timeout: 5
+      Policies:
+        - AWSLambdaBasicExecutionRole
+      Events:
+        OfferAcceptedRule:
+          Type: EventBridgeRule
+          Properties:
+            EventBusName: !Ref EventBus
+            Pattern:
+              detail-type:
+                - 'dynamicPricingService.offerAccepted'
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+
+  UpdatePricingFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/updatePricing.handler
+      Runtime: nodejs22.x
+      Architectures:
+        - x86_64
+      MemorySize: 256
+      Timeout: 15
       Policies:
         - AWSLambdaBasicExecutionRole
       Events:

@@ -1,9 +1,10 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult, Context } from 'aws-lambda';
-// import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-// import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
-//
-// const client = new DynamoDBClient({});
-// const ddbDocClient = DynamoDBDocumentClient.from(client);
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
+import { Offer } from '../aggregates/offer';
+
+const client = new DynamoDBClient({});
+const ddbDocClient = DynamoDBDocumentClient.from(client);
 
 interface CreateOfferRequest {
     version: string;
@@ -36,6 +37,16 @@ export const handler = async (event: APIGatewayProxyEvent, context: Context): Pr
                 }),
             };
         }
+
+        const offer = new Offer(ddbDocClient, context);
+        await offer.createOffer(
+            body.buyer.city,
+            parseFloat(body.buyer.location.latitude),
+            parseFloat(body.buyer.location.longitude),
+            body.vendor.city,
+            parseFloat(body.vendor.location.latitude),
+            parseFloat(body.vendor.location.longitude),
+        );
 
         const pickupFactor = calculatePriceFactor(10, 100, 1.2);
         const deliveryFactor = calculatePriceFactor(80, 100, 1.6);

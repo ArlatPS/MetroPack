@@ -59,6 +59,8 @@ Resources:
       Timeout: 15
       Policies:
         - AWSLambdaBasicExecutionRole
+        - DynamoDBReadPolicy:
+              TableName: !Ref CityTable
       Events:
         ApiEvent:
           Type: Api
@@ -66,6 +68,9 @@ Resources:
             Path: /createOffer
             Method: POST
             RestApiId: !Ref ApiGateway
+      Environment:
+        Variables:
+          CITY_TABLE: !Ref CityTable
     Metadata:
       BuildMethod: esbuild
       BuildProperties:
@@ -125,7 +130,29 @@ Resources:
         Target: es2020
         Sourcemap: true
 
+  CityTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: CityTable
+      AttributeDefinitions:
+        - AttributeName: cityCodename
+          AttributeType: S
+        - AttributeName: date
+          AttributeType: S
+      KeySchema:
+        - AttributeName: cityCodename
+          KeyType: HASH
+        - AttributeName: date
+          KeyType: RANGE
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+
 Outputs:
   ApiEndpoint:
     Description: API Gateway endpoint URL
-    Value: !Sub "https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/prod/putEvent"
+    Value: !Sub "https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/prod"
+Globals:
+  Function:
+    LoggingConfig:
+      LogFormat: JSON

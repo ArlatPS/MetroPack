@@ -1,4 +1,4 @@
-import { addDays, format, isWeekend } from 'date-fns';
+import { addDays, format, isWeekend, parse } from 'date-fns';
 
 export function getNextWorkingDays(numOfDays: number): string[] {
     const dates: Date[] = [];
@@ -10,7 +10,7 @@ export function getNextWorkingDays(numOfDays: number): string[] {
         currentDate = addDays(currentDate, 1);
     }
 
-    return dates.map((date) => format(date, 'dd.MM.yyyy'));
+    return dates.map((date) => format(date, 'dd-MM-yyyy'));
 }
 
 function getNextWorkingDay(date: Date): Date {
@@ -19,4 +19,8 @@ function getNextWorkingDay(date: Date): Date {
         nextDate = addDays(nextDate, 1);
     }
     return nextDate;
+}
+
+export function parseDate(date: string): Date {
+    return parse(date, 'dd-MM-yyyy', new Date());
 }

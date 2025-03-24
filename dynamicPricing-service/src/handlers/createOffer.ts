@@ -39,7 +39,7 @@ export const handler = async (event: APIGatewayProxyEvent, context: Context): Pr
         }
 
         const offer = new Offer(ddbDocClient, context);
-        await offer.createOffer(
+        const aa = await offer.createOffer(
             body.buyer.city,
             parseFloat(body.buyer.location.latitude),
             parseFloat(body.buyer.location.longitude),
@@ -48,14 +48,9 @@ export const handler = async (event: APIGatewayProxyEvent, context: Context): Pr
             parseFloat(body.vendor.location.longitude),
         );
 
-        const pickupFactor = calculatePriceFactor(10, 100, 1.2);
-        const deliveryFactor = calculatePriceFactor(80, 100, 1.6);
-
-        const basePrice = 10;
-
         return {
             statusCode: 200,
-            body: JSON.stringify({ price: basePrice * pickupFactor * deliveryFactor }),
+            body: JSON.stringify(aa),
         };
     } catch (err) {
         console.error(err);
@@ -68,11 +63,7 @@ export const handler = async (event: APIGatewayProxyEvent, context: Context): Pr
     }
 };
 
-function calculatePriceFactor(currentAvailable: number, maxAvailable: number, multiplier: number): number {
-    const ratio = currentAvailable / maxAvailable;
-    return 1 + (1 - ratio) * multiplier;
-}
-
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function validateRequest(body: any): body is CreateOfferRequest {
     return (
         typeof body.version === 'string' &&

@@ -1,4 +1,3 @@
-import { BatchGetItemCommand, BatchGetItemCommandInput } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, QueryCommand } from '@aws-sdk/lib-dynamodb';
 import { getNextWorkingDays } from '../helpers/dateHelpers';
 
@@ -7,26 +6,29 @@ interface City {
     dates: Record<
         string,
         {
-            maxCapacity: number;
-            currentCapacity: number;
+            maxPickupCapacity: number;
+            currentPickupCapacity: number;
+            maxDeliveryCapacity: number;
+            currentDeliveryCapacity: number;
+            multiplier: number;
+            basePrice: number;
         }
     >;
 }
 
 const NUM_OF_DAYS = 3;
 
-export async function getCity(cityCodename: string, ddbDocClient: DynamoDBDocumentClient) {
+export async function getCity(cityCodename: string, ddbDocClient: DynamoDBDocumentClient): Promise<City> {
     const cityTable = process.env.CITY_TABLE;
     if (!cityTable) throw new Error('City table is not set');
 
     const workingDates = getNextWorkingDays(NUM_OF_DAYS);
-    console.log('Fetching data for dates:', workingDates);
 
     const results = [];
     for (const date of workingDates) {
         const params = {
             TableName: cityTable,
-            KeyConditionExpression: 'cityCodename = :c AND #d = :d',
+            KeyConditionExpression: 'cityCodename = :c and #d = :d',
             ExpressionAttributeNames: {
                 '#d': 'date',
             },
@@ -37,9 +39,21 @@ export async function getCity(cityCodename: string, ddbDocClient: DynamoDBDocume
         };
 
         const data = await ddbDocClient.send(new QueryCommand(params));
-        console.log(`Results for ${date}:`, JSON.stringify(data.Items, null, 2));
         results.push(...(data.Items || []));
     }
 
-    return results.length ? results : null;
+    return {
+        cityCodename,
+        dates: results.reduce((acc, item) => {
+            acc[item.date] = {
+                maxPickupCapacity: item.maxPickupCapacity,
+                currentPickupCapacity: item.currentPickupCapacity,
+                maxDeliveryCapacity: item.maxDeliveryCapacity,
+                currentDeliveryCapacity: item.currentDeliveryCapacity,
+                multiplier: item.multiplier,
+                basePrice: item.basePrice,
+            };
+            return acc;
+        }, {} as City['dates']),
+    } as City;
 }

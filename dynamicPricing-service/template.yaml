@@ -61,6 +61,8 @@ Resources:
         - AWSLambdaBasicExecutionRole
         - DynamoDBReadPolicy:
               TableName: !Ref CityTable
+        - DynamoDBWritePolicy:
+              TableName: !Ref OfferTable
       Events:
         ApiEvent:
           Type: Api
@@ -71,6 +73,7 @@ Resources:
       Environment:
         Variables:
           CITY_TABLE: !Ref CityTable
+          OFFER_TABLE: !Ref OfferTable
     Metadata:
       BuildMethod: esbuild
       BuildProperties:
@@ -97,6 +100,9 @@ Resources:
             Pattern:
               detail-type:
                 - 'dynamicPricingService.offerAccepted'
+      Environment:
+        Variables:
+          OFFER_TABLE: !Ref OfferTable
     Metadata:
       BuildMethod: esbuild
       BuildProperties:
@@ -147,6 +153,23 @@ Resources:
       ProvisionedThroughput:
         ReadCapacityUnits: 1
         WriteCapacityUnits: 1
+
+  OfferTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: OfferTable
+      AttributeDefinitions:
+        - AttributeName: offerId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: offerId
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
 
 Outputs:
   ApiEndpoint:

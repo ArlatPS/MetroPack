@@ -1,4 +1,4 @@
-import { PutItemCommand, PutItemCommandInput } from '@aws-sdk/client-dynamodb';
+import { PutItemCommand, PutItemCommandInput, QueryCommand } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 
 export interface OfferDetails {
@@ -44,4 +44,32 @@ export async function putOffer(
     await ddbDocClient.send(new PutItemCommand(params));
 
     return offer;
+}
+
+export async function getOffer(
+    offerId: string,
+    ddbDocClient: DynamoDBDocumentClient,
+): Promise<OfferWithDetails | null> {
+    const offerTable = process.env.OFFER_TABLE;
+
+    if (!offerTable) {
+        throw new Error('Offer table is not set');
+    }
+
+    const params = {
+        TableName: offerTable,
+        KeyConditionExpression: 'offerId = :offerId',
+        ExpressionAttributeValues: {
+            ':offerId': { S: offerId },
+        },
+    };
+
+    const data = await ddbDocClient.send(new QueryCommand(params));
+    const items = data.Items;
+
+    if (!items || items.length === 0) {
+        return null;
+    }
+
+    return items[0] as unknown as OfferWithDetails;
 }

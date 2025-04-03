@@ -1,4 +1,4 @@
-import { APIGatewayProxyEvent, APIGatewayProxyResult, Context } from 'aws-lambda';
+import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 import { Offer } from '../aggregates/offer';
@@ -25,7 +25,7 @@ interface CreateOfferRequest {
         };
     };
 }
-export const handler = async (event: APIGatewayProxyEvent, context: Context): Promise<APIGatewayProxyResult> => {
+export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
     try {
         const body = JSON.parse(event.body || '{}');
 
@@ -38,7 +38,7 @@ export const handler = async (event: APIGatewayProxyEvent, context: Context): Pr
             };
         }
 
-        const offer = new Offer(ddbDocClient, context);
+        const offer = new Offer(ddbDocClient);
         const aa = await offer.createOffer(
             body.buyer.city,
             parseFloat(body.buyer.location.latitude),

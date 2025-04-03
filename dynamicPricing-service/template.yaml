@@ -58,7 +58,6 @@ Resources:
       MemorySize: 256
       Timeout: 15
       Policies:
-        - AWSLambdaBasicExecutionRole
         - DynamoDBReadPolicy:
               TableName: !Ref CityTable
         - DynamoDBWritePolicy:
@@ -81,25 +80,25 @@ Resources:
         Target: es2020
         Sourcemap: true
 
-  OfferAcceptedFunction:
+  GetOfferFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Handler: src/handlers/offerAccepted.handler
+      Handler: src/handlers/getOffer.handler
       Runtime: nodejs22.x
       Architectures:
         - x86_64
       MemorySize: 128
       Timeout: 5
       Policies:
-        - AWSLambdaBasicExecutionRole
+        - DynamoDBReadPolicy:
+            TableName: !Ref OfferTable
       Events:
-        OfferAcceptedRule:
-          Type: EventBridgeRule
+        ApiEvent:
+          Type: Api
           Properties:
-            EventBusName: !Ref EventBus
-            Pattern:
-              detail-type:
-                - 'dynamicPricingService.offerAccepted'
+            Path: /getOffer/{offerId}
+            Method: GET
+            RestApiId: !Ref ApiGateway
       Environment:
         Variables:
           OFFER_TABLE: !Ref OfferTable

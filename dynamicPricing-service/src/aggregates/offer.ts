@@ -1,8 +1,8 @@
 import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
-import { Context } from 'aws-lambda';
 import { getCity } from '../datasources/cityTable';
-import { OfferDetails, OfferWithDetails, putOffer } from '../datasources/offerTable';
+import * as offerTable from '../datasources/offerTable';
 import { parseDate } from '../helpers/dateHelpers';
+import { OfferDetails, OfferWithDetails } from '../datasources/offerTable';
 
 interface PossibleOffer {
     pickupDate: string;
@@ -12,11 +12,13 @@ interface PossibleOffer {
 
 export class Offer {
     private readonly ddbDocClient: DynamoDBDocumentClient;
-    private readonly context: Context;
 
-    constructor(ddbDocClient: DynamoDBDocumentClient, context: Context) {
+    constructor(ddbDocClient: DynamoDBDocumentClient) {
         this.ddbDocClient = ddbDocClient;
-        this.context = context;
+    }
+
+    public async getOfferById(offerId: string): Promise<OfferWithDetails | null> {
+        return offerTable.getOffer(offerId, this.ddbDocClient);
     }
 
     public async createOffer(
@@ -40,7 +42,7 @@ export class Offer {
     }
 
     private async saveOffer(offerDetails: OfferDetails): Promise<OfferWithDetails> {
-        return await putOffer(offerDetails, this.ddbDocClient);
+        return await offerTable.putOffer(offerDetails, this.ddbDocClient);
     }
 
     private createOfferDetails(

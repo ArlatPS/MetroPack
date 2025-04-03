@@ -126,19 +126,58 @@ paths:
                 properties:
                   offerId:
                     type: string
-                  dates:
-                    type: array
-                    items:
-                      type: object
-                    properties:
-                      date:
-                        type: string
-                      price:
-                        type: number
-                      currency:
-                        type: string
-                      availableCapacity:
-                        type: number
+                  pickupCityCodename:
+                    type: string
+                  pickupDate:
+                    type: string
+                  deliveryCityCodename:
+                    type: string
+                  deliveryDate:
+                    type: string
+                  price:
+                    type: number
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+
+  /getOffer/{offerId}:
+    get:
+      summary: Get offer
+      responses:
+        '200':
+          description: Offer details retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  offerId:
+                    type: string
+                  pickupCityCodename:
+                    type: string
+                  pickupDate:
+                    type: string
+                  deliveryCityCodename:
+                    type: string
+                  deliveryDate:
+                    type: string
+                  price:
+                    type: number
         '400':
           description: Bad request
           content:

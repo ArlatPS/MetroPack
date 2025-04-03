@@ -1,5 +1,6 @@
 import { PutItemCommand, PutItemCommandInput, QueryCommand } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
+import { unmarshall } from '@aws-sdk/util-dynamodb';
 
 export interface OfferDetails {
     pickupCityCodename: string;
@@ -71,5 +72,9 @@ export async function getOffer(
         return null;
     }
 
-    return items[0] as unknown as OfferWithDetails;
+    const offer = unmarshall(items[0]);
+
+    delete offer.ttl;
+
+    return offer as OfferWithDetails;
 }

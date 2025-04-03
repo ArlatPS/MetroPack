@@ -11,6 +11,71 @@ Resources:
       Name: BillingServiceApi
       StageName: prod
 
+  GetBillsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/getBills.handler
+      Runtime: nodejs22.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 5
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Path: /bills
+            Method: POST
+            RestApiId: !Ref ApiGateway
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref BillTable
+      Environment:
+        Variables:
+          BILL_TABLE: !Ref BillTable
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+
+  BillTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: BillTable
+      AttributeDefinitions:
+        - AttributeName: vendorId
+          AttributeType: S
+        - AttributeName: month
+          AttributeType: S
+      KeySchema:
+        - AttributeName: vendorId
+          KeyType: HASH
+        - AttributeName: month
+          KeyType: RANGE
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+
+  OrderTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: OrderTable
+      AttributeDefinitions:
+        - AttributeName: orderId
+          AttributeType: S
+        - AttributeName: eventOrder
+          AttributeType: N
+      KeySchema:
+        - AttributeName: orderId
+          KeyType: HASH
+        - AttributeName: eventOrder
+          KeyType: RANGE
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+
 Outputs:
   ApiEndpoint:
     Description: API Gateway endpoint URL

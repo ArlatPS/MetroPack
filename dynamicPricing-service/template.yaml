@@ -1,0 +1,180 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: DynamicPricingService API with Lambda integration
+
+Transform:
+  - AWS::Serverless-2016-10-31
+
+Resources:
+  ApiGateway:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: DynamicPricingServiceApi
+      StageName: prod
+
+  EventBridgeLambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/eventBridge.handler
+      Runtime: nodejs22.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 5
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - Statement:
+            - Effect: Allow
+              Action: events:PutEvents
+              Resource: !GetAtt EventBus.Arn
+      Environment:
+        Variables:
+          EVENT_BUS_NAME: !Ref EventBus
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Path: /putEvent
+            Method: POST
+            RestApiId: !Ref ApiGateway
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+
+  EventBus:
+    Type: AWS::Events::EventBus
+    Properties:
+      Name: DynamicPricingServiceBus
+
+  CreateOfferFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/createOffer.handler
+      Runtime: nodejs22.x
+      Architectures:
+        - x86_64
+      MemorySize: 256
+      Timeout: 15
+      Policies:
+        - DynamoDBReadPolicy:
+              TableName: !Ref CityTable
+        - DynamoDBWritePolicy:
+              TableName: !Ref OfferTable
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Path: /createOffer
+            Method: POST
+            RestApiId: !Ref ApiGateway
+      Environment:
+        Variables:
+          CITY_TABLE: !Ref CityTable
+          OFFER_TABLE: !Ref OfferTable
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+
+  GetOfferFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/getOffer.handler
+      Runtime: nodejs22.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 5
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref OfferTable
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Path: /getOffer/{offerId}
+            Method: GET
+            RestApiId: !Ref ApiGateway
+      Environment:
+        Variables:
+          OFFER_TABLE: !Ref OfferTable
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+
+  UpdatePricingFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/updatePricing.handler
+      Runtime: nodejs22.x
+      Architectures:
+        - x86_64
+      MemorySize: 256
+      Timeout: 15
+      Policies:
+        - AWSLambdaBasicExecutionRole
+      Events:
+        OfferAcceptedRule:
+          Type: EventBridgeRule
+          Properties:
+            EventBusName: !Ref EventBus
+            Pattern:
+              detail-type:
+                - 'dynamicPricingService.offerAccepted'
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+
+  CityTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: CityTable
+      AttributeDefinitions:
+        - AttributeName: cityCodename
+          AttributeType: S
+        - AttributeName: date
+          AttributeType: S
+      KeySchema:
+        - AttributeName: cityCodename
+          KeyType: HASH
+        - AttributeName: date
+          KeyType: RANGE
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+
+  OfferTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: OfferTable
+      AttributeDefinitions:
+        - AttributeName: offerId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: offerId
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+
+Outputs:
+  ApiEndpoint:
+    Description: API Gateway endpoint URL
+    Value: !Sub "https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/prod"
+Globals:
+  Function:
+    LoggingConfig:
+      LogFormat: JSON

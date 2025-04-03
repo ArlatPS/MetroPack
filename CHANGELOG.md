@@ -1,5 +1,8 @@
 # CHANGELOG
 
+### [0.4.0] - 2025-04-03
+- `Offer` aggregate and event bus in `dynamicPricing-service`.
+
 ## [0.3.0] - 2025-03-16
 - Initialised ors with vroom and openStreetMap.
 

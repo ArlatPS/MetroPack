@@ -1,4 +1,5 @@
 import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
+import { getOffer } from '../datasources/dynamicPricingService';
 
 interface Order {
     orderId: string;
@@ -29,7 +30,9 @@ export class Customer {
 
     public async getBillDetails(customerId: string, month: string): Promise<BillWithOrders> {}
 
-    public async addOrder(customerId: string, orderId: string, date: string, offerId: string): Promise<void> {}
+    public async addOrder(customerId: string, orderId: string, date: string, offerId: string): Promise<void> {
+        await getOffer(offerId);
+    }
 
     public async markOrderAsCompleted(orderId: string): Promise<void> {}
 

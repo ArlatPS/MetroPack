@@ -4,6 +4,11 @@ Description: BillingService
 Transform:
   - AWS::Serverless-2016-10-31
 
+Parameters:
+  DynamicPricingApiId:
+    Type: String
+    Description: The API ID of the Dynamic Pricing API
+
 Resources:
   ApiGateway:
     Type: AWS::Serverless::Api
@@ -70,6 +75,78 @@ Resources:
       Environment:
         Variables:
           BILL_TABLE: !Ref BillTable
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+
+  GetBillDetailsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/getBillDetails.handler
+      Runtime: nodejs22.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 5
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Path: /bill
+            Method: POST
+            RestApiId: !Ref ApiGateway
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref BillTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref OrderTable
+      Environment:
+        Variables:
+          BILL_TABLE: !Ref BillTable
+          ORDER_TABLE: !Ref OrderTable
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+
+  OrderCreatedFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/orderCreated.handler
+      Runtime: nodejs22.x
+      Architectures:
+        - x86_64
+      MemorySize: 256
+      Timeout: 15
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - DynamoDBCrudPolicy:
+            TableName: !Ref BillTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref OrderTable
+        - Statement:
+            - Effect: Allow
+              Action:
+                - execute-api:Invoke
+              Resource: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${DynamicPricingApiId}/*/*/getOffer/*
+      Environment:
+        Variables:
+          BILL_TABLE: !Ref BillTable
+          ORDER_TABLE: !Ref OrderTable
+          DYNAMIC_PRICING_API_ID: !Ref DynamicPricingApiId
+      Events:
+        OfferAcceptedRule:
+          Type: EventBridgeRule
+          Properties:
+            EventBusName: !Ref EventBus
+            Pattern:
+              detail-type:
+                - 'vendorService.orderCreated'
     Metadata:
       BuildMethod: esbuild
       BuildProperties:

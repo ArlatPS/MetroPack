@@ -51,12 +51,13 @@ export async function getOffer(offerId: string): Promise<Offer | null> {
         response.body.on('error', reject);
     });
 
+    if (response.statusCode === 404) {
+        return null;
+    }
+
     if (response.statusCode !== 200) {
-        console.error(`Failed to fetch offer. Status: ${response.statusCode}`);
         throw new Error(`Failed to fetch offer. Status: ${response.statusCode}`);
     }
 
-    console.log(responseBody);
-
-    return JSON.parse(responseBody);
+    return JSON.parse(responseBody) as Offer;
 }

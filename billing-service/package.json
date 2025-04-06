@@ -9,6 +9,8 @@
         "test": "npm run compile && npm run unit"
     },
     "dependencies": {
+        "@aws-sdk/client-eventbridge": "^3.783.0",
+        "@aws-sdk/lib-dynamodb": "^3.782.0",
         "esbuild": "^0.14.14"
     },
     "devDependencies": {

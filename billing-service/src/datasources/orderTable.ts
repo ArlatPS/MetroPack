@@ -1,5 +1,5 @@
 import { PutItemCommand, PutItemCommandInput, QueryCommand } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, TransactWriteCommand, TransactWriteCommandInput } from '@aws-sdk/lib-dynamodb';
 import { unmarshall } from '@aws-sdk/util-dynamodb';
 
 export interface Order {
@@ -65,4 +65,24 @@ export async function getOrder(orderId: string, ddbDocClient: DynamoDBDocumentCl
     }
 
     return unmarshall(items[0]) as Order;
+}
+
+export function getAddOrderTransactItem(order: Order) {
+    const orderTable = process.env.ORDER_TABLE;
+
+    if (!orderTable) {
+        throw new Error('Order table is not set');
+    }
+
+    return {
+        Put: {
+            TableName: orderTable,
+            Item: {
+                orderId: order.orderId, // just use raw values
+                date: order.date,
+                price: order.price,
+                completed: order.completed,
+            },
+        },
+    };
 }

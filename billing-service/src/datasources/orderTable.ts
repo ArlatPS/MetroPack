@@ -1,5 +1,5 @@
-import { PutItemCommand, PutItemCommandInput, QueryCommand } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, TransactWriteCommand, TransactWriteCommandInput } from '@aws-sdk/lib-dynamodb';
+import { BatchGetItemCommand, QueryCommand } from '@aws-sdk/client-dynamodb';
+import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 import { unmarshall } from '@aws-sdk/util-dynamodb';
 
 export interface Order {
@@ -8,39 +8,6 @@ export interface Order {
     price: number;
     completed: boolean;
 }
-
-// export async function putOffer(
-//     offerDetails: OfferDetails,
-//     ddbDocClient: DynamoDBDocumentClient,
-// ): Promise<OfferWithDetails> {
-//     const offerTable = process.env.OFFER_TABLE;
-//
-//     if (!offerTable) {
-//         throw new Error('Offer table is not set');
-//     }
-//
-//     const offer: OfferWithDetails = {
-//         orderId: crypto.randomUUID(),
-//         ...offerDetails,
-//     };
-//
-//     const params: PutItemCommandInput = {
-//         TableName: offerTable,
-//         Item: {
-//             orderId: { S: offer.orderId },
-//             pickupCityCodename: { S: offer.pickupCityCodename },
-//             pickupDate: { S: offer.pickupDate },
-//             deliveryCityCodename: { S: offer.deliveryCityCodename },
-//             deliveryDate: { S: offer.deliveryDate },
-//             price: { N: offer.price.toString() },
-//             ttl: { N: (Date.now() + 1000 * 60 * 60 * 24 * 3).toString() },
-//         },
-//     };
-//
-//     await ddbDocClient.send(new PutItemCommand(params));
-//
-//     return offer;
-// }
 
 export async function getOrder(orderId: string, ddbDocClient: DynamoDBDocumentClient): Promise<Order | null> {
     const orderTable = process.env.ORDER_TABLE;
@@ -65,6 +32,35 @@ export async function getOrder(orderId: string, ddbDocClient: DynamoDBDocumentCl
     }
 
     return unmarshall(items[0]) as Order;
+}
+
+export async function getOrders(orders: string[], ddbDocClient: DynamoDBDocumentClient): Promise<Order[]> {
+    const orderTable = process.env.ORDER_TABLE;
+
+    if (!orderTable) {
+        throw new Error('Order table is not set');
+    }
+
+    const keys = orders.map((orderId) => ({
+        orderId: { S: orderId },
+    }));
+
+    const params = {
+        RequestItems: {
+            [orderTable]: {
+                Keys: keys,
+            },
+        },
+    };
+
+    const data = await ddbDocClient.send(new BatchGetItemCommand(params));
+    const items = data.Responses?.[orderTable];
+
+    if (!items || items.length === 0) {
+        return [];
+    }
+
+    return items.map((item) => unmarshall(item)) as Order[];
 }
 
 export function getAddOrderTransactItem(order: Order) {

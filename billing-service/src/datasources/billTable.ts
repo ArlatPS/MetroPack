@@ -2,11 +2,12 @@ import { PutItemCommand, QueryCommand } from '@aws-sdk/client-dynamodb';
 import { unmarshall } from '@aws-sdk/util-dynamodb';
 import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 
-export interface Bill {
+export interface Bill<orders = string[]> {
     customerId: string;
     month: string;
     totalPrice: number;
     totalPaid: number;
+    orders: orders;
 }
 
 export async function getBill(
@@ -89,4 +90,27 @@ export async function createBill(bill: Bill, ddbDocClient: DynamoDBDocumentClien
     };
 
     await ddbDocClient.send(new PutItemCommand(params));
+}
+
+export async function getBills(customerId: string, ddbDocClient: DynamoDBDocumentClient): Promise<Bill[]> {
+    const billTable = process.env.BILL_TABLE;
+
+    if (!billTable) {
+        throw new Error('Bill table is not set');
+    }
+
+    const params = {
+        TableName: billTable,
+        KeyConditionExpression: '#customerId = :customerId',
+        ExpressionAttributeNames: {
+            '#customerId': 'customerId',
+        },
+        ExpressionAttributeValues: {
+            ':customerId': { S: customerId },
+        },
+    };
+
+    const data = await ddbDocClient.send(new QueryCommand(params));
+
+    return data.Items?.map((item) => unmarshall(item) as Bill) || [];
 }

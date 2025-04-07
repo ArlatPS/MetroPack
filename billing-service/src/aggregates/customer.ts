@@ -1,11 +1,9 @@
 import { DynamoDBDocumentClient, TransactWriteCommand } from '@aws-sdk/lib-dynamodb';
 import { getOffer } from '../datasources/dynamicPricingService';
-import { getAddOrderTransactItem, getOrder, Order } from '../datasources/orderTable';
-import { Bill, createBill, getAddOrderToBillTransactItem, getBill } from '../datasources/billTable';
+import { getAddOrderTransactItem, getOrder, getOrders, Order } from '../datasources/orderTable';
+import { Bill, createBill, getAddOrderToBillTransactItem, getBill, getBills } from '../datasources/billTable';
 
-interface BillWithOrders extends Bill {
-    orders: Order[];
-}
+type BillWithOrders = Bill<Order[]>;
 
 export class Customer {
     private readonly ddbDocClient: DynamoDBDocumentClient;
@@ -14,9 +12,24 @@ export class Customer {
         this.ddbDocClient = ddbDocClient;
     }
 
-    public async getBills(customerId: string): Promise<Bill[]> {}
+    public async getBills(customerId: string): Promise<Bill[]> {
+        return await getBills(customerId, this.ddbDocClient);
+    }
 
-    public async getBillDetails(customerId: string, month: string): Promise<BillWithOrders> {}
+    public async getBillDetails(customerId: string, month: string): Promise<BillWithOrders> {
+        const bill = await getBill(customerId, month, this.ddbDocClient);
+
+        if (!bill) {
+            throw new Error(`Bill for customer ${customerId} in month ${month} not found`);
+        }
+
+        const orders = await getOrders(bill.orders, this.ddbDocClient);
+
+        return {
+            ...bill,
+            orders,
+        };
+    }
 
     public async addOrder(customerId: string, orderId: string, date: string, offerId: string): Promise<void> {
         const offer = await getOffer(offerId);
@@ -44,6 +57,7 @@ export class Customer {
                 month,
                 totalPrice: 0,
                 totalPaid: 0,
+                orders: [],
             };
             await createBill(bill, this.ddbDocClient);
         }

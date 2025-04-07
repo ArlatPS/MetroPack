@@ -1,4 +1,4 @@
-import { APIGatewayProxyEvent, APIGatewayProxyResult, Context, EventBridgeEvent } from 'aws-lambda';
+import { EventBridgeEvent } from 'aws-lambda';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 
@@ -18,7 +18,6 @@ interface OrderCreatedEvent {
 
 export const handler = async (
     event: EventBridgeEvent<'vendorService.orderCreated', OrderCreatedEvent>,
-    context: Context,
 ): Promise<void> => {
     const { vendorId, orderId, date, offerId } = event.detail.data;
 

@@ -16,6 +16,8 @@ jobs:
       matrix:
         service:
           - vendor-service
+          - dynamicPricing-service
+          - billing-service
 
     steps:
       - name: Checkout repository

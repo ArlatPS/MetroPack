@@ -1,0 +1,26 @@
+{
+  "version": "1",
+  "id": "12345678-1234-1234-1234-123456789012",
+  "detail-type": "billingService.billPaid",
+  "source": "lambdaName",
+  "time": "2022-01-01T00:00:00Z",
+  "region": "eu-central-1",
+  "resources": [
+    "arn:lambdaIdentifier"
+  ],
+  "detail": {
+    "metadata": {
+      "domain": "finance",
+      "subdomain": "billing",
+      "service": "billingService",
+      "category": "domainEvent",
+      "type": "data",
+      "name": "billPaid"
+    },
+    "data": {
+      "vendorId": "12345678-1234-1234-1234-123456789012",
+      "month": "2022-01",
+      "amount": 100.00
+    }
+  }
+}

@@ -1,0 +1,443 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: >-
+  Revised template for running ORS and Vroom on ECS with Fargate using AWS Cloud Map for service discovery.
+  This template now includes a public subnet and the necessary routing (via an Internet Gateway and a NAT Gateway)
+  so that tasks in the private subnet can pull container images from external registries.
+Transform:
+  - AWS::Serverless-2016-10-31
+
+Resources:
+  # ----------------- VPC -----------------
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: Routing-VPC
+
+  # ----------------- Private Subnet (for ECS Tasks) -----------------
+  PrivateSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.1.0/24
+      MapPublicIpOnLaunch: false
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      Tags:
+        - Key: Name
+          Value: Routing-Private-Subnet
+
+  # ----------------- Public Subnet (for NAT Gateway) -----------------
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.2.0/24
+      MapPublicIpOnLaunch: true
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      Tags:
+        - Key: Name
+          Value: Routing-Public-Subnet
+
+  # ----------------- Internet Gateway and Attachment -----------------
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: Routing-IGW
+
+  VPCGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+
+  # ----------------- NAT Gateway Setup -----------------
+  EIPForNAT:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+
+  NATGateway:
+    Type: AWS::EC2::NatGateway
+    DependsOn: VPCGatewayAttachment
+    Properties:
+      AllocationId: !GetAtt EIPForNAT.AllocationId
+      SubnetId: !Ref PublicSubnet
+      Tags:
+        - Key: Name
+          Value: Routing-NATGW
+
+  # ----------------- Route Table for Private Subnet -----------------
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: Routing-Private-RT
+
+  PrivateRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NATGateway
+
+  PrivateSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet
+      RouteTableId: !Ref PrivateRouteTable
+
+  # ----------------- Route Table for Public Subnet -----------------
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: Routing-Public-RT
+
+  PublicRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet
+      RouteTableId: !Ref PublicRouteTable
+
+  # ----------------- Security Groups -----------------
+  TaskSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: ECS Task SG (grants EFS access)
+      VpcId: !Ref VPC
+      SecurityGroupIngress: [ ]
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: Task-Security-Group
+
+  SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow Lambda and ECS Tasks to access each other and EFS
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 8082
+          ToPort: 8082
+          SourceSecurityGroupId: !Ref LambdaSecurityGroup
+        - IpProtocol: tcp
+          FromPort: 3000
+          ToPort: 3000
+          SourceSecurityGroupId: !Ref LambdaSecurityGroup
+        - IpProtocol: tcp
+          FromPort: 2049
+          ToPort: 2049
+          SourceSecurityGroupId: !Ref TaskSecurityGroup
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: Routing-Security-Group
+
+  LambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Lambda Security Group
+      VpcId: !Ref VPC
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: Lambda-Security-Group
+
+  # ----------------- Private DNS Namespace for Cloud Map -----------------
+  PrivateDNSNamespace:
+    Type: AWS::ServiceDiscovery::PrivateDnsNamespace
+    Properties:
+      Name: routing.local
+      Vpc: !Ref VPC
+      Description: "Private DNS namespace for ECS services"
+
+  # ----------------- Cloud Map Service Definitions -----------------
+  ORSCloudMapService:
+    Type: AWS::ServiceDiscovery::Service
+    Properties:
+      Name: ors
+      Description: "Cloud Map service for ORS"
+      DnsConfig:
+        DnsRecords:
+          - TTL: 60
+            Type: A
+        NamespaceId: !Ref PrivateDNSNamespace
+        RoutingPolicy: MULTIVALUE
+      HealthCheckCustomConfig:
+        FailureThreshold: 1
+
+  VroomCloudMapService:
+    Type: AWS::ServiceDiscovery::Service
+    Properties:
+      Name: vroom
+      Description: "Cloud Map service for Vroom"
+      DnsConfig:
+        DnsRecords:
+          - TTL: 60
+            Type: A
+        NamespaceId: !Ref PrivateDNSNamespace
+        RoutingPolicy: MULTIVALUE
+      HealthCheckCustomConfig:
+        FailureThreshold: 1
+
+  # ----------------- Amazon EFS File System for Persistent Storage -----------------
+  ORSEFS:
+    Type: AWS::EFS::FileSystem
+    Properties:
+      Encrypted: true
+      PerformanceMode: generalPurpose
+      FileSystemTags:
+        - Key: Name
+          Value: ORS-EFS
+
+  EFSMountTarget:
+    Type: AWS::EFS::MountTarget
+    Properties:
+      FileSystemId: !Ref ORSEFS
+      SubnetId: !Ref PrivateSubnet
+      SecurityGroups:
+        - !Ref SecurityGroup
+
+  # ----------------- ECS Task Definitions -----------------
+  ORSTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: ORSTask
+      Cpu: 1024
+      Memory: 2048
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      ExecutionRoleArn: !GetAtt TaskExecutionRole.Arn
+      ContainerDefinitions:
+        - Name: ors-app
+          Image: openrouteservice/openrouteservice:v8.0.0
+          PortMappings:
+            - ContainerPort: 8082
+              Protocol: tcp
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: /ecs/ors-app
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: ecs
+          Environment:
+            - Name: XMS
+              Value: "1g"
+            - Name: XMX
+              Value: "8g"
+            - Name: ADDITIONAL_JAVA_OPTS
+              Value: ""
+          MountPoints:
+            - SourceVolume: ors-data
+              ContainerPath: /home/ors
+      Volumes:
+        - Name: ors-data
+          EFSVolumeConfiguration:
+            FilesystemId: !Ref ORSEFS
+            TransitEncryption: ENABLED
+
+  VroomTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: VroomTask
+      Cpu: 512
+      Memory: 1024
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      ExecutionRoleArn: !GetAtt TaskExecutionRole.Arn
+      ContainerDefinitions:
+        - Name: vroom
+          Image: ghcr.io/vroom-project/vroom-docker:v1.14.0
+          PortMappings:
+            - ContainerPort: 3000
+              Protocol: tcp
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: /ecs/vroom
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: ecs
+
+  # ----------------- ECS Services -----------------
+  ORSLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /ecs/ors-app
+      RetentionInDays: 7
+
+  VroomLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /ecs/vroom
+      RetentionInDays: 7
+
+  ECSCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: RoutingCluster
+
+  ORSService:
+    Type: AWS::ECS::Service
+    Properties:
+      Cluster: !Ref ECSCluster
+      DesiredCount: 1
+      LaunchType: FARGATE
+      TaskDefinition: !Ref ORSTaskDefinition
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          Subnets:
+            - !Ref PrivateSubnet
+          SecurityGroups:
+            - !Ref TaskSecurityGroup
+      ServiceRegistries:
+        - RegistryArn: !GetAtt ORSCloudMapService.Arn
+    DependsOn:
+      - ORSLogGroup
+
+  VroomService:
+    Type: AWS::ECS::Service
+    Properties:
+      Cluster: !Ref ECSCluster
+      DesiredCount: 1
+      LaunchType: FARGATE
+      TaskDefinition: !Ref VroomTaskDefinition
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          Subnets:
+            - !Ref PrivateSubnet
+          SecurityGroups:
+            - !Ref TaskSecurityGroup
+      ServiceRegistries:
+        - RegistryArn: !GetAtt VroomCloudMapService.Arn
+    DependsOn:
+      - VroomLogGroup
+
+  # ----------------- Lambda Functions using Cloud Map names -----------------
+  ORSLambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/ors.handler
+      Runtime: nodejs22.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 5
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref LambdaSecurityGroup
+        SubnetIds:
+          - !Ref PrivateSubnet
+      Environment:
+        Variables:
+          # The Cloud Map–registered domain name for ORS is "ors.routing.local"
+          ORS_URL: "http://ors.routing.local:8082"
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /ors
+            Method: POST
+      Policies:
+        - Statement:
+            Effect: Allow
+            Action:
+              - ecs:DescribeTasks
+              - ecs:ListTasks
+              - ecs:DescribeServices
+            Resource: "*"
+
+  VroomLambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/vroom.handler
+      Runtime: nodejs22.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 5
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref LambdaSecurityGroup
+        SubnetIds:
+          - !Ref PrivateSubnet
+      Environment:
+        Variables:
+          # The Cloud Map–registered domain name for Vroom is "vroom.routing.local"
+          VROOM_URL: "http://vroom.routing.local:3000"
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /vroom
+            Method: POST
+      Policies:
+        - Statement:
+            Effect: Allow
+            Action:
+              - ecs:DescribeTasks
+              - ecs:ListTasks
+              - ecs:DescribeServices
+            Resource: "*"
+
+  # ----------------- Execution Role -----------------
+  TaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: ECSExecutionPolicy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ecr:GetDownloadUrlForLayer
+                  - ecr:BatchGetImage
+                  - ecr:BatchCheckLayerAvailability
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - s3:GetObject
+                Resource: "*"
+
+Outputs:
+  WebEndpoint:
+    Description: API Gateway endpoint URL for Prod stage
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
+Globals:
+  Function:
+    LoggingConfig:
+      LogFormat: JSON

@@ -154,6 +154,68 @@ Resources:
         Target: es2020
         Sourcemap: true
 
+  OrderCompletedFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/orderCompleted.handler
+      Runtime: nodejs22.x
+      Architectures:
+        - x86_64
+      MemorySize: 256
+      Timeout: 15
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - DynamoDBCrudPolicy:
+            TableName: !Ref OrderTable
+      Environment:
+        Variables:
+          ORDER_TABLE: !Ref OrderTable
+      Events:
+        OfferAcceptedRule:
+          Type: EventBridgeRule
+          Properties:
+            EventBusName: !Ref EventBus
+            Pattern:
+              detail-type:
+                - 'parcelManagementService.orderCompleted'
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+
+  BillPaidFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/billPaid.handler
+      Runtime: nodejs22.x
+      Architectures:
+        - x86_64
+      MemorySize: 256
+      Timeout: 15
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - DynamoDBCrudPolicy:
+            TableName: !Ref BillTable
+      Environment:
+        Variables:
+          BILL_TABLE: !Ref BillTable
+      Events:
+        OfferAcceptedRule:
+          Type: EventBridgeRule
+          Properties:
+            EventBusName: !Ref EventBus
+            Pattern:
+              detail-type:
+                - 'billingService.billPaid'
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+
   BillTable:
     Type: AWS::DynamoDB::Table
     Properties:

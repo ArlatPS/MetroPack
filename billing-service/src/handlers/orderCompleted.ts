@@ -7,25 +7,22 @@ import { Customer } from '../aggregates/customer';
 const client = new DynamoDBClient({});
 const ddbDocClient = DynamoDBDocumentClient.from(client);
 
-interface OrderCreatedEvent {
+interface OrderCompletedEvent {
     data: {
-        vendorId: string;
         orderId: string;
-        date: string;
-        offerId: string;
     };
 }
 
 export const handler = async (
-    event: EventBridgeEvent<'vendorService.orderCreated', OrderCreatedEvent>,
+    event: EventBridgeEvent<'vendorService.orderCompleted', OrderCompletedEvent>,
 ): Promise<void> => {
-    const { vendorId, orderId, date, offerId } = event.detail.data;
+    const { orderId } = event.detail.data;
 
-    if (!vendorId || !orderId || !date || !offerId) {
+    if (!orderId) {
         throw new Error(`Invalid event data ${JSON.stringify(event)}`);
     }
 
     const customer = new Customer(ddbDocClient);
 
-    await customer.addOrder(vendorId, orderId, date, offerId);
+    await customer.markOrderAsCompleted(orderId);
 };

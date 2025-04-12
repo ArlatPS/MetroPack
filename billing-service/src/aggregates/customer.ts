@@ -1,7 +1,15 @@
 import { DynamoDBDocumentClient, TransactWriteCommand } from '@aws-sdk/lib-dynamodb';
 import { getOffer } from '../datasources/dynamicPricingService';
-import { getAddOrderTransactItem, getOrder, getOrders, Order } from '../datasources/orderTable';
-import { Bill, createBill, getAddOrderToBillTransactItem, getBill, getBills } from '../datasources/billTable';
+import { getAddOrderTransactItem, getOrder, getOrders, Order, updateOrderStatus } from '../datasources/orderTable';
+import {
+    Bill,
+    createBill,
+    getAddOrderToBillTransactItem,
+    getBill,
+    getBills,
+    updateAmountPaid,
+} from '../datasources/billTable';
+import { Month } from '../valueObjects';
 
 type BillWithOrders = Bill<Order[]>;
 
@@ -42,7 +50,7 @@ export class Customer {
             throw new Error(`Order with ID ${orderId} already exists`);
         }
 
-        const month = this.getMonth(date);
+        const month = new Month(date).toString();
 
         const order: Order = {
             orderId,
@@ -70,9 +78,19 @@ export class Customer {
         );
     }
 
-    public async markOrderAsCompleted(orderId: string): Promise<void> {}
+    public async markOrderAsCompleted(orderId: string): Promise<void> {
+        await updateOrderStatus(orderId, true, this.ddbDocClient);
+    }
 
-    public async payBill(customerId: string, month: string, amount: number): Promise<void> {}
+    public async payBill(customerId: string, month: string, amount: number): Promise<void> {
+        const bill = await getBill(customerId, month, this.ddbDocClient);
+
+        if (!bill) {
+            throw new Error(`Bill for customer ${customerId} in month ${month} not found`);
+        }
+
+        await updateAmountPaid(customerId, month, amount, this.ddbDocClient);
+    }
 
     private async getBill(customerId: string, month: string): Promise<Bill | null> {
         return await getBill(customerId, month, this.ddbDocClient);
@@ -80,9 +98,5 @@ export class Customer {
 
     private async getOrder(orderId: string): Promise<Order | null> {
         return getOrder(orderId, this.ddbDocClient);
-    }
-
-    private getMonth(date: string): string {
-        return new Date(date).getFullYear() + '-' + (new Date(date).getMonth() + 1).toString().padStart(2, '0');
     }
 }

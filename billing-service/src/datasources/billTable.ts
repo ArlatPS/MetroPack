@@ -1,4 +1,5 @@
 import { PutItemCommand, QueryCommand } from '@aws-sdk/client-dynamodb';
+import { UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import { unmarshall } from '@aws-sdk/util-dynamodb';
 import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 
@@ -113,4 +114,31 @@ export async function getBills(customerId: string, ddbDocClient: DynamoDBDocumen
     const data = await ddbDocClient.send(new QueryCommand(params));
 
     return data.Items?.map((item) => unmarshall(item) as Bill) || [];
+}
+
+export async function updateAmountPaid(
+    customerId: string,
+    month: string,
+    amount: number,
+    ddbDocClient: DynamoDBDocumentClient,
+): Promise<void> {
+    const billTable = process.env.BILL_TABLE;
+
+    if (!billTable) {
+        throw new Error('Bill table is not set');
+    }
+
+    const params = {
+        TableName: billTable,
+        Key: {
+            customerId: customerId,
+            month: month,
+        },
+        UpdateExpression: 'SET totalPaid = totalPaid + :amount',
+        ExpressionAttributeValues: {
+            ':amount': amount,
+        },
+    };
+
+    await ddbDocClient.send(new UpdateCommand(params));
 }

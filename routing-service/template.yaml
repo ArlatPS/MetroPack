@@ -1,8 +1,7 @@
 AWSTemplateFormatVersion: 2010-09-09
 Description: >-
   Revised template for running ORS and Vroom on ECS with Fargate using AWS Cloud Map for service discovery.
-  This template now includes a public subnet and the necessary routing (via an Internet Gateway and a NAT Gateway)
-  so that tasks in the private subnet can pull container images from external registries.
+  This template now includes only a public subnet so that ECS tasks (and Lambda functions) operate within that subnet.
 Transform:
   - AWS::Serverless-2016-10-31
 
@@ -18,19 +17,7 @@ Resources:
         - Key: Name
           Value: Routing-VPC
 
-  # ----------------- Private Subnet (for ECS Tasks) -----------------
-  PrivateSubnet:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId: !Ref VPC
-      CidrBlock: 10.0.1.0/24
-      MapPublicIpOnLaunch: false
-      AvailabilityZone: !Select [ 0, !GetAZs '' ]
-      Tags:
-        - Key: Name
-          Value: Routing-Private-Subnet
-
-  # ----------------- Public Subnet (for NAT Gateway) -----------------
+  # ----------------- Public Subnet -----------------
   PublicSubnet:
     Type: AWS::EC2::Subnet
     Properties:
@@ -55,44 +42,6 @@ Resources:
     Properties:
       VpcId: !Ref VPC
       InternetGatewayId: !Ref InternetGateway
-
-  # ----------------- NAT Gateway Setup -----------------
-  EIPForNAT:
-    Type: AWS::EC2::EIP
-    Properties:
-      Domain: vpc
-
-  NATGateway:
-    Type: AWS::EC2::NatGateway
-    DependsOn: VPCGatewayAttachment
-    Properties:
-      AllocationId: !GetAtt EIPForNAT.AllocationId
-      SubnetId: !Ref PublicSubnet
-      Tags:
-        - Key: Name
-          Value: Routing-NATGW
-
-  # ----------------- Route Table for Private Subnet -----------------
-  PrivateRouteTable:
-    Type: AWS::EC2::RouteTable
-    Properties:
-      VpcId: !Ref VPC
-      Tags:
-        - Key: Name
-          Value: Routing-Private-RT
-
-  PrivateRoute:
-    Type: AWS::EC2::Route
-    Properties:
-      RouteTableId: !Ref PrivateRouteTable
-      DestinationCidrBlock: 0.0.0.0/0
-      NatGatewayId: !Ref NATGateway
-
-  PrivateSubnetRouteTableAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      SubnetId: !Ref PrivateSubnet
-      RouteTableId: !Ref PrivateRouteTable
 
   # ----------------- Route Table for Public Subnet -----------------
   PublicRouteTable:
@@ -120,16 +69,18 @@ Resources:
   TaskSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: ECS Task SG (grants EFS access)
+      GroupDescription: ECS Task SG (grants EFS access + allows traffic from Lambda)
       VpcId: !Ref VPC
-      SecurityGroupIngress: [ ]
+      SecurityGroupIngress:
+        - IpProtocol: -1             
+          SourceSecurityGroupId: !Ref LambdaSecurityGroup
       SecurityGroupEgress:
         - IpProtocol: -1
           CidrIp: 0.0.0.0/0
       Tags:
         - Key: Name
           Value: Task-Security-Group
-
+          
   SecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -218,7 +169,7 @@ Resources:
     Type: AWS::EFS::MountTarget
     Properties:
       FileSystemId: !Ref ORSEFS
-      SubnetId: !Ref PrivateSubnet
+      SubnetId: !Ref PublicSubnet
       SecurityGroups:
         - !Ref SecurityGroup
 
@@ -238,7 +189,7 @@ Resources:
           Image: openrouteservice/openrouteservice:v8.0.0
           PortMappings:
             - ContainerPort: 8082
-              Protocol: tcp
+              HostPort: 8082
           LogConfiguration:
             LogDriver: awslogs
             Options:
@@ -283,6 +234,23 @@ Resources:
               awslogs-group: /ecs/vroom
               awslogs-region: !Ref AWS::Region
               awslogs-stream-prefix: ecs
+          Environment:
+            - Name: VROOM_ROUTER
+              Value: "ors"
+          # Override the container command to update /conf/config.yml and then start VROOM
+          Command:
+            - "/bin/sh"
+            - "-c"
+            - |
+              sed -i "s|0.0.0.0/ors/v2|http://ors.routing.local|g" /conf/config.yml && \
+              sed -i "s|8080|8082|g" /conf/config.yml && \
+              echo 'Updated config.yml:' && cat /conf/config.yml && \
+              exec vroom
+      Volumes:
+        - Name: vroom-data
+          EFSVolumeConfiguration:
+            FilesystemId: !Ref ORSEFS
+            TransitEncryption: ENABLED
 
   # ----------------- ECS Services -----------------
   ORSLogGroup:
@@ -311,15 +279,16 @@ Resources:
       TaskDefinition: !Ref ORSTaskDefinition
       NetworkConfiguration:
         AwsvpcConfiguration:
-          AssignPublicIp: DISABLED
+          AssignPublicIp: ENABLED
           Subnets:
-            - !Ref PrivateSubnet
+            - !Ref PublicSubnet
           SecurityGroups:
             - !Ref TaskSecurityGroup
       ServiceRegistries:
         - RegistryArn: !GetAtt ORSCloudMapService.Arn
     DependsOn:
       - ORSLogGroup
+      - EFSMountTarget
 
   VroomService:
     Type: AWS::ECS::Service
@@ -330,9 +299,9 @@ Resources:
       TaskDefinition: !Ref VroomTaskDefinition
       NetworkConfiguration:
         AwsvpcConfiguration:
-          AssignPublicIp: DISABLED
+          AssignPublicIp: ENABLED
           Subnets:
-            - !Ref PrivateSubnet
+            - !Ref PublicSubnet
           SecurityGroups:
             - !Ref TaskSecurityGroup
       ServiceRegistries:
@@ -349,12 +318,12 @@ Resources:
       Architectures:
         - x86_64
       MemorySize: 128
-      Timeout: 5
+      Timeout: 60
       VpcConfig:
         SecurityGroupIds:
           - !Ref LambdaSecurityGroup
         SubnetIds:
-          - !Ref PrivateSubnet
+          - !Ref PublicSubnet
       Environment:
         Variables:
           # The Cloud Map–registered domain name for ORS is "ors.routing.local"
@@ -373,6 +342,12 @@ Resources:
               - ecs:ListTasks
               - ecs:DescribeServices
             Resource: "*"
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
 
   VroomLambda:
     Type: AWS::Serverless::Function
@@ -387,7 +362,7 @@ Resources:
         SecurityGroupIds:
           - !Ref LambdaSecurityGroup
         SubnetIds:
-          - !Ref PrivateSubnet
+          - !Ref PublicSubnet
       Environment:
         Variables:
           # The Cloud Map–registered domain name for Vroom is "vroom.routing.local"
@@ -406,6 +381,12 @@ Resources:
               - ecs:ListTasks
               - ecs:DescribeServices
             Resource: "*"
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
 
   # ----------------- Execution Role -----------------
   TaskExecutionRole:
@@ -437,6 +418,7 @@ Outputs:
   WebEndpoint:
     Description: API Gateway endpoint URL for Prod stage
     Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
+
 Globals:
   Function:
     LoggingConfig:

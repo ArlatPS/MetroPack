@@ -1,7 +1,7 @@
 {
     "name": "routing_service",
     "version": "1.0.0",
-    "description": "VendorService for MetroPack",
+    "description": "RoutingService for MetroPack",
     "scripts": {
         "unit": "jest",
         "lint": "eslint src/ --fix",

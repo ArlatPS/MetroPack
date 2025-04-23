@@ -112,3 +112,26 @@ export async function createDeliveryJobs(
         };
     });
 }
+
+export async function snapToRoute(location: Location): Promise<Location> {
+    const response = await axios.post<{ locations: { location: [number, number] }[] }>(
+        'https://api.openrouteservice.org/v2/snap/driving-car',
+        {
+            locations: [[location.longitude, location.latitude]],
+            radius: 500,
+        },
+        {
+            headers: {
+                Accept: 'application/json, application/geo+json, application/gpx+xml, img/png; charset=utf-8',
+                Authorization: process.env.ORS_API_KEY,
+                'Content-Type': 'application/json; charset=utf-8',
+            },
+            timeout: 10000,
+        },
+    );
+
+    return {
+        longitude: response.data.locations[0].location[0],
+        latitude: response.data.locations[0].location[1],
+    };
+}

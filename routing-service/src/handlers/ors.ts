@@ -1,5 +1,6 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { createDeliveryJobs } from '../datasources/ors';
+import { AxiosError } from 'axios';
 
 export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
     try {
@@ -36,10 +37,10 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
         console.error('Error:', error);
 
         return {
-            statusCode: error.response?.status || 500,
+            statusCode: (error as AxiosError).response?.status || 500,
             body: JSON.stringify({
                 message: 'Failed to process the request',
-                error,
+                error: (error as AxiosError).message,
             }),
         };
     }

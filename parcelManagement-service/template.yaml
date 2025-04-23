@@ -1,0 +1,96 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: ParcelManagement Service
+
+Transform:
+  - AWS::Serverless-2016-10-31
+
+Parameters:
+  RoutingServiceApiId:
+    Type: String
+    Description: The API ID of the Routing Service API
+
+Resources:
+  ApiGateway:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: ParcelManagementServiceApi
+      StageName: prod
+
+  EventBridgeLambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/eventBridge.handler
+      Runtime: nodejs22.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 5
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - Statement:
+            - Effect: Allow
+              Action: events:PutEvents
+              Resource: !GetAtt EventBus.Arn
+      Environment:
+        Variables:
+          EVENT_BUS_NAME: !Ref EventBus
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Path: /putEvent
+            Method: POST
+            RestApiId: !Ref ApiGateway
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+
+  EventBus:
+    Type: AWS::Events::EventBus
+    Properties:
+      Name: ParcelManagementServiceBus
+
+  TestFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/test.handler
+      Runtime: nodejs22.x
+      Architectures:
+        - x86_64
+      MemorySize: 256
+      Timeout: 15
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - Statement:
+            - Effect: Allow
+              Action:
+                - execute-api:Invoke
+              Resource: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${RoutingServiceApiId}/*/*/snap
+      Environment:
+        Variables:
+          ROUTING_API_ID: !Ref RoutingServiceApiId
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Path: /test
+            Method: POST
+            RestApiId: !Ref ApiGateway
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+
+Outputs:
+  ApiEndpoint:
+    Description: API Gateway endpoint URL
+    Value: !Sub "https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/prod"
+Globals:
+  Function:
+    LoggingConfig:
+      LogFormat: JSON

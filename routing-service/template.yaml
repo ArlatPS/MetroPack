@@ -4,6 +4,11 @@ Description: >-
 Transform:
   - AWS::Serverless-2016-10-31
 
+Parameters:
+  OrsKey:
+    Type: String
+    Description: The API key for ors
+
 Resources:
   CreateDeliveryJobsFunction:
     Type: AWS::Serverless::Function
@@ -20,13 +25,11 @@ Resources:
           Properties:
             Path: /ors
             Method: POST
-            Auth:
-              Authorizer: AWS_IAM
       Policies:
         - AWSLambdaBasicExecutionRole
       Environment:
         Variables:
-          ORS_API_KEY: 'placeholder'
+          ORS_API_KEY: !Ref OrsKey
     Metadata:
       BuildMethod: esbuild
       BuildProperties:
@@ -49,13 +52,11 @@ Resources:
           Properties:
             Path: /snap
             Method: POST
-            Auth:
-              Authorizer: AWS_IAM
       Policies:
         - AWSLambdaBasicExecutionRole
       Environment:
         Variables:
-          ORS_API_KEY: 'placeholder'
+          ORS_API_KEY: !Ref OrsKey
     Metadata:
       BuildMethod: esbuild
       BuildProperties:

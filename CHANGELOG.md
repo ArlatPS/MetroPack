@@ -1,5 +1,8 @@
 # CHANGELOG
 
+## [0.5.0] - 2025-04-23
+- `Ors` datasource for routing.
+
 ### [0.4.0] - 2025-04-03
 - `Offer` aggregate and event bus in `dynamicPricing-service`.
 

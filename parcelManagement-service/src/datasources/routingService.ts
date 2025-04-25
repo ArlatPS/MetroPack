@@ -4,11 +4,7 @@ import { Sha256 } from '@aws-crypto/sha256-js';
 import { defaultProvider } from '@aws-sdk/credential-provider-node';
 import { NodeHttpHandler } from '@aws-sdk/node-http-handler';
 import { parseUrl } from '@aws-sdk/url-parser-node';
-
-interface Location {
-    latitude: number;
-    longitude: number;
-}
+import { Location } from '../valueObjects/location';
 
 export async function getSnap(location: Location): Promise<Location | null> {
     const apiId = process.env.ROUTING_API_ID;

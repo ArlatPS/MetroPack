@@ -146,7 +146,7 @@ export type ParcelEvent =
     | ParcelDeliveredEvent;
 
 export class Parcel {
-    private parcelId: string = '';
+    private parcelId = '';
     private pickupLocation: Location = new Location(0, 0);
     private deliveryLocation: Location = new Location(0, 0);
     private transitWarehouses: Warehouse[] = [];

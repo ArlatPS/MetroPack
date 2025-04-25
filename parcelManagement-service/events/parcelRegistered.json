@@ -1,0 +1,42 @@
+{
+  "version": "1",
+  "id": "12345678-1234-1234-1234-123456789012",
+  "detail-type": "parcelManagementService.parcelRegistered",
+  "source": "lambdaName",
+  "time": "2022-01-01T00:00:00Z",
+  "region": "eu-central-1",
+  "resources": [
+    "arn:lambdaIdentifier"
+  ],
+  "detail": {
+    "metadata": {
+      "domain": "parcelShipping",
+      "subdomain": "parcelManagement",
+      "service": "parcelManagementService",
+      "category": "domainEvent",
+      "type": "data",
+      "name": "parcelRegistered"
+    },
+    "data": {
+      "parcelId": "12345678-1234-1234-1234-123456789012",
+      "time": "2022-01-01T00:00:00Z",
+      "pickupLocation": {
+        "longitude": 12.345678,
+        "latitude": 98.765432
+      },
+      "transitWarehouses": [
+        {
+          "warehouseId": "12345678-1234-1234-1234-123456789012",
+          "location": {
+            "longitude": 12.345678,
+            "latitude": 98.765432
+          }
+        }
+      ],
+      "deliveryLocation": {
+        "longitude": 98.765432,
+        "latitude": 12.345678
+      }
+    }
+  }
+}

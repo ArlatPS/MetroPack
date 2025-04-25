@@ -86,6 +86,53 @@ Resources:
         Target: es2020
         Sourcemap: true
 
+  GetParcelFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/getParcel.handler
+      Runtime: nodejs22.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 5
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /parcel/{parcelId}
+            Method: GET
+            RestApiId: !Ref ApiGateway
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref ParcelTable
+      Environment:
+        Variables:
+          PARCEL_TABLE: !Ref ParcelTable
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+
+  ParcelTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: ParcelTable
+      AttributeDefinitions:
+        - AttributeName: parcelId
+          AttributeType: S
+        - AttributeName: eventOrder
+          AttributeType: N
+      KeySchema:
+        - AttributeName: parcelId
+          KeyType: HASH
+        - AttributeName: eventOrder
+          KeyType: RANGE
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+
 Outputs:
   ApiEndpoint:
     Description: API Gateway endpoint URL

@@ -1,10 +1,12 @@
 import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 import { Context } from 'aws-lambda';
 import { Location } from '../valueObjects/location';
-import { getParcelEvents } from '../datasources/parcelTable';
+import { getParcelEvents, putParcelEvent } from '../datasources/parcelTable';
+import { gatAvailableWarehouses } from '../datasources/warehouseTable';
+import { createParcelRegisteredEvent } from '../helpers/parcelEventsHelpers';
 
-interface Warehouse {
-    id: string;
+export interface Warehouse {
+    warehouseId: string;
     location: Location;
 }
 
@@ -36,7 +38,7 @@ interface ParcelEventBase {
     resources: string[];
 }
 
-interface ParcelRegisteredEvent extends ParcelEventBase {
+export interface ParcelRegisteredEvent extends ParcelEventBase {
     detail: {
         metadata: {
             name: 'parcelRegistered';
@@ -145,6 +147,8 @@ export type ParcelEvent =
     | ParcelDeliveryStartedEvent
     | ParcelDeliveredEvent;
 
+const MAX_PICKUP_DISTANCE = 20; // in km
+
 export class Parcel {
     private parcelId = '';
     private pickupLocation: Location = new Location(0, 0);
@@ -186,6 +190,61 @@ export class Parcel {
     public async loadState(parcelId: string): Promise<void> {
         this.events = await getParcelEvents(parcelId, this.ddbDocClient);
 
+        this.projectEvents();
+    }
+
+    // choice between method and execute commands
+    public async register(pickupLocation: Location, deliveryLocation: Location): Promise<void> {
+        const warehouses = await gatAvailableWarehouses(this.ddbDocClient);
+        if (warehouses.length === 0) {
+            throw new Error('No available warehouses');
+        }
+        const warehouseLocations = warehouses.map(
+            (warehouse) =>
+                new Location(warehouse.location.longitude, warehouse.location.latitude, warehouse.warehouseId),
+        );
+
+        const pickupWarehouseLocation = pickupLocation.getClosestLocation(warehouseLocations, MAX_PICKUP_DISTANCE);
+
+        if (!pickupWarehouseLocation) {
+            throw new Error('No available warehouse for pickup');
+        }
+
+        const deliveryWarehouseLocation = deliveryLocation.getClosestLocation(warehouseLocations, MAX_PICKUP_DISTANCE);
+
+        if (!deliveryWarehouseLocation) {
+            throw new Error('No available warehouse for delivery');
+        }
+        const transitWarehouses: Warehouse[] = [];
+
+        if (pickupWarehouseLocation.equals(deliveryWarehouseLocation)) {
+            transitWarehouses.push({
+                warehouseId: pickupWarehouseLocation.id as string,
+                location: pickupWarehouseLocation,
+            });
+        } else {
+            transitWarehouses.push({
+                warehouseId: pickupWarehouseLocation.id as string,
+                location: pickupWarehouseLocation,
+            });
+            transitWarehouses.push({
+                warehouseId: pickupWarehouseLocation.id as string,
+                location: deliveryWarehouseLocation,
+            });
+        }
+
+        await this.saveAndEmitEvent(
+            createParcelRegisteredEvent(pickupLocation, deliveryLocation, transitWarehouses, this.context),
+        );
+    }
+
+    private async saveAndEmitEvent(event: ParcelEvent): Promise<void> {
+        const parcelId = event.detail.data.parcelId;
+        const eventIndex = this.events.length;
+
+        await putParcelEvent(parcelId, eventIndex, event, this.ddbDocClient);
+
+        this.events.push(event);
         this.projectEvents();
     }
 
@@ -258,7 +317,9 @@ export class Parcel {
     }
 
     private defineStateAfterDeliveryToWarehouse(): void {
-        if (this.currentWarehouse?.id === this.transitWarehouses[this.transitWarehouses.length - 1].id) {
+        if (
+            this.currentWarehouse?.warehouseId === this.transitWarehouses[this.transitWarehouses.length - 1].warehouseId
+        ) {
             this.status = ParcelStatus.IN_WAREHOUSE;
         } else {
             this.status = ParcelStatus.TO_TRANSFER;

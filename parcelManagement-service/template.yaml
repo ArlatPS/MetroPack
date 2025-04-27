@@ -115,6 +115,38 @@ Resources:
         Target: es2020
         Sourcemap: true
 
+  RegisterParcelFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/registerParcel.handler
+      Runtime: nodejs22.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 5
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /parcel/register
+            Method: POST
+            RestApiId: !Ref ApiGateway
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ParcelTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref WarehouseTable
+      Environment:
+        Variables:
+          PARCEL_TABLE: !Ref ParcelTable
+          WAREHOUSE_TABLE: !Ref WarehouseTable
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+
   ParcelTable:
     Type: AWS::DynamoDB::Table
     Properties:
@@ -128,6 +160,24 @@ Resources:
         - AttributeName: parcelId
           KeyType: HASH
         - AttributeName: eventOrder
+          KeyType: RANGE
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+
+  WarehouseTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: WarehouseTable
+      AttributeDefinitions:
+        - AttributeName: warehouseId
+          AttributeType: S
+        - AttributeName: status
+          AttributeType: S
+      KeySchema:
+        - AttributeName: warehouseId
+          KeyType: HASH
+        - AttributeName: status
           KeyType: RANGE
       ProvisionedThroughput:
         ReadCapacityUnits: 1

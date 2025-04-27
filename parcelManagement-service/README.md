@@ -8,7 +8,7 @@ sam validate
 sam build
 ```
 ```bash 
-sam deploy --stack-name parcelManagement-service --guided
+sam deploy --stack-name parcelManagement-service --parameter-overrides RoutingServiceApiId=
 ```
 ```bash 
 sam sync --stack-name parcelManagement-service --watch

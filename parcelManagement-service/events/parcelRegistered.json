@@ -20,6 +20,7 @@
     "data": {
       "parcelId": "12345678-1234-1234-1234-123456789012",
       "time": "2022-01-01T00:00:00Z",
+      "pickupDate":"02-01-2022",
       "pickupLocation": {
         "longitude": 12.345678,
         "latitude": 98.765432
@@ -33,6 +34,7 @@
           }
         }
       ],
+      "deliveryDate": "03-01-2022",
       "deliveryLocation": {
         "longitude": 98.765432,
         "latitude": 12.345678

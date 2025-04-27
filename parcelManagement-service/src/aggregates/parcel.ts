@@ -46,8 +46,10 @@ export interface ParcelRegisteredEvent extends ParcelEventBase {
         data: {
             parcelId: string;
             time: string;
+            pickupDate: string;
             pickupLocation: Location;
             transitWarehouses: Warehouse[];
+            deliveryDate: string;
             deliveryLocation: Location;
         };
     };
@@ -151,7 +153,9 @@ const MAX_PICKUP_DISTANCE = 20; // in km
 
 export class Parcel {
     private parcelId = '';
+    private pickupDate = '';
     private pickupLocation: Location = new Location(0, 0);
+    private deliveryDate = '';
     private deliveryLocation: Location = new Location(0, 0);
     private transitWarehouses: Warehouse[] = [];
     private status: ParcelStatus = ParcelStatus.TO_PICKUP;
@@ -169,7 +173,9 @@ export class Parcel {
 
     public getDetails(): {
         parcelId: string;
+        pickupDate: string;
         pickupLocation: Location;
+        deliveryDate: string;
         deliveryLocation: Location;
         transitWarehouses: Warehouse[];
         status: ParcelStatus;
@@ -178,7 +184,9 @@ export class Parcel {
     } {
         return {
             parcelId: this.parcelId,
+            pickupDate: this.pickupDate,
             pickupLocation: this.pickupLocation,
+            deliveryDate: this.deliveryDate,
             deliveryLocation: this.deliveryLocation,
             transitWarehouses: this.transitWarehouses,
             status: this.status,
@@ -194,7 +202,12 @@ export class Parcel {
     }
 
     // choice between method and execute commands
-    public async register(pickupLocation: Location, deliveryLocation: Location): Promise<void> {
+    public async register(
+        pickupDate: string,
+        pickupLocation: Location,
+        deliveryDate: string,
+        deliveryLocation: Location,
+    ): Promise<void> {
         const warehouses = await gatAvailableWarehouses(this.ddbDocClient);
         if (warehouses.length === 0) {
             throw new Error('No available warehouses');
@@ -234,7 +247,14 @@ export class Parcel {
         }
 
         await this.saveAndEmitEvent(
-            createParcelRegisteredEvent(pickupLocation, deliveryLocation, transitWarehouses, this.context),
+            createParcelRegisteredEvent(
+                pickupDate,
+                pickupLocation,
+                deliveryDate,
+                deliveryLocation,
+                transitWarehouses,
+                this.context,
+            ),
         );
     }
 
@@ -273,7 +293,9 @@ export class Parcel {
 
     private applyParcelRegisteredEvent(event: ParcelRegisteredEvent): void {
         this.parcelId = event.detail.data.parcelId;
+        this.pickupDate = event.detail.data.pickupDate;
         this.pickupLocation = event.detail.data.pickupLocation;
+        this.deliveryDate = event.detail.data.deliveryDate;
         this.deliveryLocation = event.detail.data.deliveryLocation;
         this.transitWarehouses = event.detail.data.transitWarehouses;
         this.status = ParcelStatus.TO_PICKUP;

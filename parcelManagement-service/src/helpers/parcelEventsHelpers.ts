@@ -4,7 +4,9 @@ import { Location } from '../valueObjects/location';
 import { randomUUID } from 'node:crypto';
 
 export function createParcelRegisteredEvent(
+    pickupDate: string,
     pickupLocation: Location,
+    deliveryDate: string,
     deliveryLocation: Location,
     transitWarehouses: Warehouse[],
     context: Context,
@@ -29,9 +31,11 @@ export function createParcelRegisteredEvent(
             data: {
                 parcelId: randomUUID(),
                 time: new Date().toISOString(),
-                pickupLocation: pickupLocation,
-                deliveryLocation: deliveryLocation,
-                transitWarehouses: transitWarehouses,
+                pickupDate,
+                pickupLocation,
+                deliveryLocation,
+                deliveryDate,
+                transitWarehouses,
             },
         },
     };

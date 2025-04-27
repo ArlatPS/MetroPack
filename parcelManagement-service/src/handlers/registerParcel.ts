@@ -24,7 +24,9 @@ export const handler = async (event: APIGatewayProxyEvent, context: Context): Pr
 
     try {
         await parcel.register(
+            body.pickupDate,
             new Location(body.pickupLocation.longitude, body.pickupLocation.latitude),
+            body.deliveryDate,
             new Location(body.deliveryLocation.longitude, body.deliveryLocation.latitude),
         );
     } catch (err) {

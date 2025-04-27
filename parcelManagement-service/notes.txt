@@ -1,0 +1,1 @@
+{    "warehouseId": {        "S": "479fda7e-9324-40c6-8e1e-94ae82220c08"    },    "status": {        "S": "AVAILABLE"    },    "cityCodename": {        "S": "pl_kraków"    },    "location": {        "M": {            "latitude": {                "N": "50.0708704"            },            "longitude": {                "N": "19.9432021"            }        }    }}

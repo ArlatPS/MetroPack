@@ -4,6 +4,7 @@ import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 
 import { Location } from '../valueObjects/location';
 import { Parcel } from '../aggregates/parcel';
+import { NotFoundError } from '../errors/NotFoundError';
 
 const client = new DynamoDBClient({});
 const ddbDocClient = DynamoDBDocumentClient.from(client);
@@ -31,6 +32,14 @@ export const handler = async (event: APIGatewayProxyEvent, context: Context): Pr
         );
     } catch (err) {
         console.error(err);
+        if (err instanceof NotFoundError) {
+            return {
+                statusCode: 404,
+                body: JSON.stringify({
+                    message: 'No available warehouses found',
+                }),
+            };
+        }
         return {
             statusCode: 500,
             body: JSON.stringify({

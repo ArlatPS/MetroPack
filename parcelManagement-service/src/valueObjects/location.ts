@@ -2,26 +2,37 @@ export class Location {
     public readonly longitude: number;
     public readonly latitude: number;
     public readonly id?: string;
+    public readonly range?: number;
 
-    constructor(longitude: number, latitude: number, id?: string) {
+    constructor(longitude: number, latitude: number, id?: string, range?: number) {
         this.longitude = longitude;
         this.latitude = latitude;
         this.id = id;
+        this.range = range;
     }
 
     public getCoordinates(): [number, number] {
         return [this.longitude, this.latitude];
     }
 
-    public getClosestLocation(locations: Location[], maxDistance: number): Location | null {
+    public getLocation(): Location {
+        return new Location(this.longitude, this.latitude);
+    }
+
+    public getClosestLocation(locations: Location[]): Location | null {
         if (locations.length === 0) {
             return null;
         }
 
         let closestLocation: Location | null = null;
-        let closestDistance = maxDistance;
+        let closestDistance = Infinity;
         locations.forEach((location) => {
             const distance = this.getDistance(location);
+
+            if (location.range && distance > location.range) {
+                return;
+            }
+
             if (distance < closestDistance) {
                 closestDistance = distance;
                 closestLocation = location;

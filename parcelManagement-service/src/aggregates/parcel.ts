@@ -4,10 +4,12 @@ import { Location } from '../valueObjects/location';
 import { getParcelEvents, putParcelEvent } from '../datasources/parcelTable';
 import { gatAvailableWarehouses } from '../datasources/warehouseTable';
 import { createParcelRegisteredEvent } from '../helpers/parcelEventsHelpers';
+import { NotFoundError } from '../errors/NotFoundError';
 
 export interface Warehouse {
     warehouseId: string;
     location: Location;
+    range?: number;
 }
 
 enum ParcelStatus {
@@ -149,8 +151,6 @@ export type ParcelEvent =
     | ParcelDeliveryStartedEvent
     | ParcelDeliveredEvent;
 
-const MAX_PICKUP_DISTANCE = 20; // in km
-
 export class Parcel {
     private parcelId = '';
     private pickupDate = '';
@@ -214,35 +214,40 @@ export class Parcel {
         }
         const warehouseLocations = warehouses.map(
             (warehouse) =>
-                new Location(warehouse.location.longitude, warehouse.location.latitude, warehouse.warehouseId),
+                new Location(
+                    warehouse.location.longitude,
+                    warehouse.location.latitude,
+                    warehouse.warehouseId,
+                    warehouse.range,
+                ),
         );
 
-        const pickupWarehouseLocation = pickupLocation.getClosestLocation(warehouseLocations, MAX_PICKUP_DISTANCE);
+        const pickupWarehouseLocation = pickupLocation.getClosestLocation(warehouseLocations);
 
         if (!pickupWarehouseLocation) {
-            throw new Error('No available warehouse for pickup');
+            throw new NotFoundError('No available warehouse for pickup');
         }
 
-        const deliveryWarehouseLocation = deliveryLocation.getClosestLocation(warehouseLocations, MAX_PICKUP_DISTANCE);
+        const deliveryWarehouseLocation = deliveryLocation.getClosestLocation(warehouseLocations);
 
         if (!deliveryWarehouseLocation) {
-            throw new Error('No available warehouse for delivery');
+            throw new NotFoundError('No available warehouse for delivery');
         }
         const transitWarehouses: Warehouse[] = [];
 
         if (pickupWarehouseLocation.equals(deliveryWarehouseLocation)) {
             transitWarehouses.push({
                 warehouseId: pickupWarehouseLocation.id as string,
-                location: pickupWarehouseLocation,
+                location: pickupWarehouseLocation.getLocation(),
             });
         } else {
             transitWarehouses.push({
                 warehouseId: pickupWarehouseLocation.id as string,
-                location: pickupWarehouseLocation,
+                location: pickupWarehouseLocation.getLocation(),
             });
             transitWarehouses.push({
                 warehouseId: pickupWarehouseLocation.id as string,
-                location: deliveryWarehouseLocation,
+                location: deliveryWarehouseLocation.getLocation(),
             });
         }
 
@@ -258,23 +263,39 @@ export class Parcel {
         );
     }
 
-    private async saveAndEmitEvent(event: ParcelEvent): Promise<void> {
+    public async saveEvent(event: ParcelEvent): Promise<void> {
+        const parcelId = event.detail.data.parcelId;
+        const eventIndex = this.events.length;
+
+        this.validateEvent(event);
+
+        await putParcelEvent(parcelId, eventIndex, event, this.ddbDocClient);
+
+        this.projectEvent(event);
+        this.events.push(event);
+    }
+
+    private async saveAndEmitEvent(event: ParcelRegisteredEvent): Promise<void> {
         const parcelId = event.detail.data.parcelId;
         const eventIndex = this.events.length;
 
         await putParcelEvent(parcelId, eventIndex, event, this.ddbDocClient);
 
+        this.projectEvent(event);
         this.events.push(event);
-        this.projectEvents();
     }
 
     private projectEvents(): void {
         this.events.forEach((event) => {
-            const handler = this.eventHandlers[event.detail.metadata.name];
-            if (handler) {
-                handler.call(this, event);
-            }
+            this.projectEvent(event);
         });
+    }
+
+    private projectEvent(event: ParcelEvent): void {
+        const handler = this.eventHandlers[event.detail.metadata.name];
+        if (handler) {
+            handler.call(this, event);
+        }
     }
 
     private eventHandlers: { [key: string]: (event: ParcelEvent) => void } = {
@@ -345,6 +366,47 @@ export class Parcel {
             this.status = ParcelStatus.IN_WAREHOUSE;
         } else {
             this.status = ParcelStatus.TO_TRANSFER;
+        }
+    }
+
+    private validateEvent(event: ParcelEvent): void {
+        switch (event.detail.metadata.name) {
+            case 'parcelPickedUp':
+                if (this.status !== ParcelStatus.TO_PICKUP) {
+                    throw new Error('Invalid state for parcelPickedUp event');
+                }
+                break;
+            case 'parcelDeliveredToWarehouse':
+                if (this.status !== ParcelStatus.TRANSIT_TO_WAREHOUSE) {
+                    throw new Error('Invalid state for parcelDeliveredToWarehouse event');
+                }
+                break;
+            case 'parcelTransferStarted':
+                if (this.status !== ParcelStatus.TO_TRANSFER) {
+                    throw new Error('Invalid state for parcelTransferStarted event');
+                }
+                break;
+            case 'parcelTransferCompleted':
+                if (this.status !== ParcelStatus.TRANSFER) {
+                    throw new Error('Invalid state for parcelTransferCompleted event');
+                }
+                break;
+            case 'parcelDeliveryStarted':
+                if (
+                    this.status !== ParcelStatus.IN_WAREHOUSE ||
+                    this.currentWarehouse?.warehouseId !==
+                        this.transitWarehouses[this.transitWarehouses.length - 1].warehouseId
+                ) {
+                    throw new Error('Invalid state for parcelDeliveryStarted event');
+                }
+                break;
+            case 'parcelDelivered':
+                if (this.status !== ParcelStatus.TRANSIT_TO_CUSTOMER) {
+                    throw new Error('Invalid state for parcelDelivered event');
+                }
+                break;
+            default:
+                throw new Error(`Unknown event type: ${event.detail.metadata.name}`);
         }
     }
 }

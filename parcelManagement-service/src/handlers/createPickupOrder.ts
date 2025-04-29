@@ -10,11 +10,13 @@ const ddbDocClient = DynamoDBDocumentClient.from(client);
 export const handler = async (event: ParcelRegisteredEvent): Promise<void> => {
     try {
         await putPickupOrder(
-            event.detail.data.parcelId,
-            event.detail.data.transitWarehouses[0].cityCodename,
-            event.detail.data.pickupDate,
-            event.detail.data.pickupLocation,
-            event.detail.data.transitWarehouses[0],
+            {
+                parcelId: event.detail.data.parcelId,
+                cityCodename: event.detail.data.transitWarehouses[0].cityCodename,
+                date: event.detail.data.pickupDate,
+                location: event.detail.data.pickupLocation,
+                warehouse: event.detail.data.transitWarehouses[0],
+            },
             ddbDocClient,
         );
     } catch (err) {

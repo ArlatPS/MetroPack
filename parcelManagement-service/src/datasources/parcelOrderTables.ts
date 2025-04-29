@@ -1,23 +1,31 @@
 import { BatchWriteCommand, DynamoDBDocumentClient, QueryCommand } from '@aws-sdk/lib-dynamodb';
+import { PutItemCommand } from '@aws-sdk/client-dynamodb';
+import { marshall } from '@aws-sdk/util-dynamodb';
+
 import { Location } from '../valueObjects/location';
 import { Warehouse } from '../aggregates/parcel';
-import { PutItemCommand } from '@aws-sdk/client-dynamodb';
-import { marshallInput } from '@aws-sdk/lib-dynamodb/dist-types/commands/utils';
-import { marshall } from '@aws-sdk/util-dynamodb';
+
+export interface PickupOrder {
+    parcelId: string;
+    cityCodename: string;
+    date: string;
+    location: Location;
+    warehouse: Warehouse;
+}
 
 export async function getPickupOrders(
     cityCodename: string,
     date: string,
     limit: number,
     ddbDocClient: DynamoDBDocumentClient,
-): Promise<any[]> {
+): Promise<PickupOrder[]> {
     const pickupOrderTable = process.env.PICKUP_ORDER_TABLE;
 
     if (!pickupOrderTable) {
         throw new Error('PickupOrderTable is not set');
     }
 
-    return await getOrders(pickupOrderTable, cityCodename, date, limit, ddbDocClient);
+    return (await getOrders(pickupOrderTable, cityCodename, date, limit, ddbDocClient)) as PickupOrder[];
 }
 
 export async function getDeliveryOrders(
@@ -56,7 +64,7 @@ async function getOrders(
     date: string,
     limit: number,
     ddbDocClient: DynamoDBDocumentClient,
-): Promise<any[]> {
+): Promise<object[]> {
     const params = {
         TableName: tableName,
         IndexName: 'CityDateIndex',
@@ -76,14 +84,7 @@ async function getOrders(
     return data.Items || [];
 }
 
-export async function putPickupOrder(
-    parcelId: string,
-    cityCodename: string,
-    date: string,
-    location: Location,
-    warehouse: Warehouse,
-    ddbDocClient: DynamoDBDocumentClient,
-): Promise<void> {
+export async function putPickupOrder(order: PickupOrder, ddbDocClient: DynamoDBDocumentClient): Promise<void> {
     const pickupOrderTable = process.env.PICKUP_ORDER_TABLE;
 
     if (!pickupOrderTable) {
@@ -92,13 +93,7 @@ export async function putPickupOrder(
 
     const params = {
         TableName: pickupOrderTable,
-        Item: marshall({
-            parcelId,
-            cityCodename,
-            date,
-            location,
-            warehouse,
-        }),
+        Item: marshall(order),
     };
 
     await ddbDocClient.send(new PutItemCommand(params));

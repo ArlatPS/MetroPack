@@ -182,6 +182,36 @@ Resources:
         Target: es2020
         Sourcemap: true
 
+  CreatePickupOrderFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/createPickupOrder.handler
+      Runtime: nodejs22.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 5
+      Events:
+        CreatePickupOrderEventRule:
+          Type: EventBridgeRule
+          Properties:
+            EventBusName: !Ref EventBus
+            Pattern:
+              detail-type:
+                - 'parcelManagementService.parcelRegistered'
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref PickupOrderTable
+      Environment:
+        Variables:
+          PICKUP_ORDER_TABLE: !Ref PickupOrderTable
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+
   ParcelTable:
     Type: AWS::DynamoDB::Table
     Properties:
@@ -217,6 +247,96 @@ Resources:
       ProvisionedThroughput:
         ReadCapacityUnits: 1
         WriteCapacityUnits: 1
+
+  PickupOrderTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: PickupOrderTable
+      AttributeDefinitions:
+        - AttributeName: parcelId
+          AttributeType: S
+        - AttributeName: cityCodename
+          AttributeType: S
+        - AttributeName: date
+          AttributeType: S
+      KeySchema:
+        - AttributeName: parcelId
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+      GlobalSecondaryIndexes:
+        - IndexName: CityDateIndex
+          KeySchema:
+            - AttributeName: cityCodename
+              KeyType: HASH
+            - AttributeName: date
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+          ProvisionedThroughput:
+            ReadCapacityUnits: 1
+            WriteCapacityUnits: 1
+
+  DeliveryOrderTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: DeliveryOrderTable
+      AttributeDefinitions:
+        - AttributeName: parcelId
+          AttributeType: S
+        - AttributeName: cityCodename
+          AttributeType: S
+        - AttributeName: date
+          AttributeType: S
+      KeySchema:
+        - AttributeName: parcelId
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+      GlobalSecondaryIndexes:
+        - IndexName: CityDateIndex
+          KeySchema:
+            - AttributeName: cityCodename
+              KeyType: HASH
+            - AttributeName: date
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+          ProvisionedThroughput:
+            ReadCapacityUnits: 1
+            WriteCapacityUnits: 1
+
+  TransferOrderTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: TransferOrderTable
+      AttributeDefinitions:
+        - AttributeName: parcelId
+          AttributeType: S
+        - AttributeName: cityCodename
+          AttributeType: S
+        - AttributeName: date
+          AttributeType: S
+      KeySchema:
+        - AttributeName: parcelId
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+      GlobalSecondaryIndexes:
+        - IndexName: CityDateIndex
+          KeySchema:
+            - AttributeName: cityCodename
+              KeyType: HASH
+            - AttributeName: date
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+          ProvisionedThroughput:
+            ReadCapacityUnits: 1
+            WriteCapacityUnits: 1
 
 Outputs:
   ApiEndpoint:

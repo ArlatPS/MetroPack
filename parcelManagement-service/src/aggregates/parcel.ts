@@ -5,10 +5,12 @@ import { getParcelEvents, putParcelEvent } from '../datasources/parcelTable';
 import { gatAvailableWarehouses } from '../datasources/warehouseTable';
 import { createParcelRegisteredEvent } from '../helpers/parcelEventsHelpers';
 import { NotFoundError } from '../errors/NotFoundError';
+import { EventBase } from '../types/events';
 
 export interface Warehouse {
     warehouseId: string;
     location: Location;
+    cityCodename: string;
     range?: number;
 }
 
@@ -30,17 +32,7 @@ interface ParcelEventMetadata {
     type: 'data';
 }
 
-interface ParcelEventBase {
-    version: '1';
-    id: string;
-    detailType: string;
-    source: string;
-    time: string;
-    region: string;
-    resources: string[];
-}
-
-export interface ParcelRegisteredEvent extends ParcelEventBase {
+export interface ParcelRegisteredEvent extends EventBase {
     detail: {
         metadata: {
             name: 'parcelRegistered';
@@ -57,7 +49,7 @@ export interface ParcelRegisteredEvent extends ParcelEventBase {
     };
 }
 
-interface ParcelPickedUpEvent extends ParcelEventBase {
+interface ParcelPickedUpEvent extends EventBase {
     detail: {
         metadata: {
             name: 'parcelPickedUp';
@@ -71,7 +63,7 @@ interface ParcelPickedUpEvent extends ParcelEventBase {
     };
 }
 
-interface ParcelDeliveredToWarehouseEvent extends ParcelEventBase {
+interface ParcelDeliveredToWarehouseEvent extends EventBase {
     detail: {
         metadata: {
             name: 'parcelDeliveredToWarehouse';
@@ -85,7 +77,7 @@ interface ParcelDeliveredToWarehouseEvent extends ParcelEventBase {
     };
 }
 
-interface ParcelTransferStartedEvent extends ParcelEventBase {
+interface ParcelTransferStartedEvent extends EventBase {
     detail: {
         metadata: {
             name: 'parcelTransferStarted';
@@ -99,7 +91,7 @@ interface ParcelTransferStartedEvent extends ParcelEventBase {
         };
     };
 }
-interface ParcelTransferCompletedEvent extends ParcelEventBase {
+interface ParcelTransferCompletedEvent extends EventBase {
     detail: {
         metadata: {
             name: 'parcelTransferCompleted';
@@ -114,7 +106,7 @@ interface ParcelTransferCompletedEvent extends ParcelEventBase {
     };
 }
 
-interface ParcelDeliveryStartedEvent extends ParcelEventBase {
+interface ParcelDeliveryStartedEvent extends EventBase {
     detail: {
         metadata: {
             name: 'parcelDeliveryStarted';
@@ -128,7 +120,7 @@ interface ParcelDeliveryStartedEvent extends ParcelEventBase {
     };
 }
 
-interface ParcelDeliveredEvent extends ParcelEventBase {
+interface ParcelDeliveredEvent extends EventBase {
     detail: {
         metadata: {
             name: 'parcelDelivered';
@@ -236,19 +228,18 @@ export class Parcel {
         const transitWarehouses: Warehouse[] = [];
 
         if (pickupWarehouseLocation.equals(deliveryWarehouseLocation)) {
-            transitWarehouses.push({
-                warehouseId: pickupWarehouseLocation.id as string,
-                location: pickupWarehouseLocation.getLocation(),
+            const warehouse = warehouses.find((warehouse) => {
+                return warehouse.warehouseId === pickupWarehouseLocation.id;
             });
+            transitWarehouses.push(warehouse as Warehouse);
         } else {
-            transitWarehouses.push({
-                warehouseId: pickupWarehouseLocation.id as string,
-                location: pickupWarehouseLocation.getLocation(),
+            const pickupWarehouse = warehouses.find((warehouse) => {
+                return warehouse.warehouseId === pickupWarehouseLocation.id;
             });
-            transitWarehouses.push({
-                warehouseId: pickupWarehouseLocation.id as string,
-                location: deliveryWarehouseLocation.getLocation(),
+            const deliveryWarehouse = warehouses.find((warehouse) => {
+                return warehouse.warehouseId === deliveryWarehouseLocation.id;
             });
+            transitWarehouses.push(pickupWarehouse as Warehouse, deliveryWarehouse as Warehouse);
         }
 
         await this.saveAndEmitEvent(

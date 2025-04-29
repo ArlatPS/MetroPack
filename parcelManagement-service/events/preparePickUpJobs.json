@@ -1,0 +1,25 @@
+{
+  "version": "1",
+  "id": "12345678-1234-1234-1234-123456789012",
+  "detail-type": "parcelManagementService.preparePickUpJobs",
+  "source": "lambdaName",
+  "time": "2022-01-02T10:00:00Z",
+  "region": "eu-central-1",
+  "resources": [
+    "arn:lambdaIdentifier"
+  ],
+  "detail": {
+    "metadata": {
+      "domain": "parcelShipping",
+      "subdomain": "parcelManagement",
+      "service": "parcelManagementService",
+      "category": "domainEvent",
+      "type": "command",
+      "name": "preparePickUpJobs"
+    },
+    "data": {
+      "cityCodename": "pl_kraków",
+      "date": "2022-01-02"
+    }
+  }
+}

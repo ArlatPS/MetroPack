@@ -1,5 +1,6 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
-import { EventBridgeClient, PutEventsCommand } from '@aws-sdk/client-eventbridge';
+import { EventBridgeClient } from '@aws-sdk/client-eventbridge';
+import { putEvent } from '../datasources/parcelManagementEventBridge';
 
 const eventBridge = new EventBridgeClient({ region: process.env.AWS_REGION });
 
@@ -21,18 +22,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
             };
         }
 
-        const putEventsCommand = new PutEventsCommand({
-            Entries: [
-                {
-                    EventBusName: process.env.EVENT_BUS_NAME,
-                    Source: body.source,
-                    DetailType: body['detail-type'],
-                    Detail: JSON.stringify(body.detail),
-                },
-            ],
-        });
-
-        await eventBridge.send(putEventsCommand);
+        await putEvent(body['detail-type'], body.detail, body.source, eventBridge);
 
         return {
             statusCode: 200,

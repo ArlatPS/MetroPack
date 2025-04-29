@@ -136,10 +136,15 @@ Resources:
             TableName: !Ref ParcelTable
         - DynamoDBReadPolicy:
             TableName: !Ref WarehouseTable
+        - Statement:
+            - Effect: Allow
+              Action: events:PutEvents
+              Resource: !GetAtt EventBus.Arn
       Environment:
         Variables:
           PARCEL_TABLE: !Ref ParcelTable
           WAREHOUSE_TABLE: !Ref WarehouseTable
+          EVENT_BUS_NAME: !Ref EventBus
     Metadata:
       BuildMethod: esbuild
       BuildProperties:

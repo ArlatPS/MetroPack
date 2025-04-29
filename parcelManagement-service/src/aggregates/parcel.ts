@@ -6,6 +6,7 @@ import { gatAvailableWarehouses } from '../datasources/warehouseTable';
 import { createParcelRegisteredEvent } from '../helpers/parcelEventsHelpers';
 import { NotFoundError } from '../errors/NotFoundError';
 import { EventBase } from '../types/events';
+import { putEvent } from '../datasources/parcelManagementEventBridge';
 
 export interface Warehouse {
     warehouseId: string;
@@ -271,6 +272,7 @@ export class Parcel {
         const eventIndex = this.events.length;
 
         await putParcelEvent(parcelId, eventIndex, event, this.ddbDocClient);
+        await putEvent(event.detailType, event.detail);
 
         this.projectEvent(event);
         this.events.push(event);

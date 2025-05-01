@@ -5,11 +5,14 @@ import { marshall } from '@aws-sdk/util-dynamodb';
 import { Location } from '../valueObjects/location';
 import { Warehouse } from '../aggregates/parcel';
 
-export interface PickupOrder {
+export interface Order {
     parcelId: string;
+    location: Location;
+}
+
+export interface PickupOrder extends Order {
     warehouseId: string;
     date: string;
-    location: Location;
     warehouse: Warehouse;
 }
 

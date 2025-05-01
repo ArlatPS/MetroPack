@@ -2,10 +2,11 @@ import { DynamoDBDocumentClient, ScanCommand } from '@aws-sdk/lib-dynamodb';
 
 type VehicleType = 'PICKUP' | 'TRANSFER' | 'DELIVERY';
 
-interface Vehicle {
+export interface Vehicle {
     vehicleId: string;
     warehouseId: string;
     type: VehicleType;
+    capacity: number;
 }
 
 export async function getAvailableVehicles(

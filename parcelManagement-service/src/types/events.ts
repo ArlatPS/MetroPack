@@ -18,7 +18,7 @@ export interface PreparePickupJobsCommandEvent extends EventBase {
             type: 'command';
         };
         data: {
-            cityCodename: string;
+            warehouseId: string;
             date: string;
         };
     };

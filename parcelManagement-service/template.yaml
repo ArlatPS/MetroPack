@@ -253,6 +253,36 @@ Resources:
         ReadCapacityUnits: 1
         WriteCapacityUnits: 1
 
+  VehicleTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: VehicleTable
+      AttributeDefinitions:
+        - AttributeName: vehicleId
+          AttributeType: S
+        - AttributeName: warehouseId
+          AttributeType: S
+        - AttributeName: type
+          AttributeType: S
+      KeySchema:
+        - AttributeName: vehicleId
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+      GlobalSecondaryIndexes:
+        - IndexName: WarehouseTypeIndex
+          KeySchema:
+            - AttributeName: warehouseId
+              KeyType: HASH
+            - AttributeName: type
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+          ProvisionedThroughput:
+            ReadCapacityUnits: 1
+            WriteCapacityUnits: 1
+
   PickupOrderTable:
     Type: AWS::DynamoDB::Table
     Properties:
@@ -260,7 +290,7 @@ Resources:
       AttributeDefinitions:
         - AttributeName: parcelId
           AttributeType: S
-        - AttributeName: cityCodename
+        - AttributeName: warehouseId
           AttributeType: S
         - AttributeName: date
           AttributeType: S
@@ -271,9 +301,9 @@ Resources:
         ReadCapacityUnits: 1
         WriteCapacityUnits: 1
       GlobalSecondaryIndexes:
-        - IndexName: CityDateIndex
+        - IndexName: WarehouseDateIndex
           KeySchema:
-            - AttributeName: cityCodename
+            - AttributeName: warehouseId
               KeyType: HASH
             - AttributeName: date
               KeyType: RANGE
@@ -290,7 +320,7 @@ Resources:
       AttributeDefinitions:
         - AttributeName: parcelId
           AttributeType: S
-        - AttributeName: cityCodename
+        - AttributeName: warehouseId
           AttributeType: S
         - AttributeName: date
           AttributeType: S
@@ -301,9 +331,9 @@ Resources:
         ReadCapacityUnits: 1
         WriteCapacityUnits: 1
       GlobalSecondaryIndexes:
-        - IndexName: CityDateIndex
+        - IndexName: WarehouseDateIndex
           KeySchema:
-            - AttributeName: cityCodename
+            - AttributeName: warehouseId
               KeyType: HASH
             - AttributeName: date
               KeyType: RANGE
@@ -320,7 +350,7 @@ Resources:
       AttributeDefinitions:
         - AttributeName: parcelId
           AttributeType: S
-        - AttributeName: cityCodename
+        - AttributeName: warehouseId
           AttributeType: S
         - AttributeName: date
           AttributeType: S
@@ -331,9 +361,9 @@ Resources:
         ReadCapacityUnits: 1
         WriteCapacityUnits: 1
       GlobalSecondaryIndexes:
-        - IndexName: CityDateIndex
+        - IndexName: WarehouseDateIndex
           KeySchema:
-            - AttributeName: cityCodename
+            - AttributeName: warehouseId
               KeyType: HASH
             - AttributeName: date
               KeyType: RANGE

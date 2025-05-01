@@ -5,7 +5,7 @@ export async function gatAvailableWarehouses(ddbDocClient: DynamoDBDocumentClien
     const warehouseTable = process.env.WAREHOUSE_TABLE;
 
     if (!warehouseTable) {
-        throw new Error('Vendor table is not set');
+        throw new Error('Warehouse table is not set');
     }
 
     const params = {

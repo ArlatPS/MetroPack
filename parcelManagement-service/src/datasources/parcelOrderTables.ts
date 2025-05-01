@@ -7,14 +7,14 @@ import { Warehouse } from '../aggregates/parcel';
 
 export interface PickupOrder {
     parcelId: string;
-    cityCodename: string;
+    warehouseId: string;
     date: string;
     location: Location;
     warehouse: Warehouse;
 }
 
 export async function getPickupOrders(
-    cityCodename: string,
+    warehouseId: string,
     date: string,
     limit: number,
     ddbDocClient: DynamoDBDocumentClient,
@@ -25,11 +25,11 @@ export async function getPickupOrders(
         throw new Error('PickupOrderTable is not set');
     }
 
-    return (await getOrders(pickupOrderTable, cityCodename, date, limit, ddbDocClient)) as PickupOrder[];
+    return (await getOrders(pickupOrderTable, warehouseId, date, limit, ddbDocClient)) as PickupOrder[];
 }
 
 export async function getDeliveryOrders(
-    cityCodename: string,
+    warehouseId: string,
     date: string,
     limit: number,
     ddbDocClient: DynamoDBDocumentClient,
@@ -40,11 +40,11 @@ export async function getDeliveryOrders(
         throw new Error('DeliveryOrderTable is not set');
     }
 
-    return await getOrders(deliveryOrderTable, cityCodename, date, limit, ddbDocClient);
+    return await getOrders(deliveryOrderTable, warehouseId, date, limit, ddbDocClient);
 }
 
 export async function getTransferOrders(
-    cityCodename: string,
+    warehouseId: string,
     date: string,
     limit: number,
     ddbDocClient: DynamoDBDocumentClient,
@@ -55,25 +55,25 @@ export async function getTransferOrders(
         throw new Error('TransferOrderTable is not set');
     }
 
-    return await getOrders(transferOrderTable, cityCodename, date, limit, ddbDocClient);
+    return await getOrders(transferOrderTable, warehouseId, date, limit, ddbDocClient);
 }
 
 async function getOrders(
     tableName: string,
-    cityCodename: string,
+    warehouseId: string,
     date: string,
     limit: number,
     ddbDocClient: DynamoDBDocumentClient,
 ): Promise<object[]> {
     const params = {
         TableName: tableName,
-        IndexName: 'CityDateIndex',
-        KeyConditionExpression: 'cityCodename = :cityCodename AND #date = :date',
+        IndexName: 'WarehouseDateIndex',
+        KeyConditionExpression: 'warehouseId = :warehouseId AND #date = :date',
         ExpressionAttributeNames: {
             '#date': 'date',
         },
         ExpressionAttributeValues: {
-            ':cityCodename': cityCodename,
+            ':warehouseId': warehouseId,
             ':date': date,
         },
         Limit: limit,

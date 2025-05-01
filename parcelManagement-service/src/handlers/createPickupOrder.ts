@@ -12,7 +12,7 @@ export const handler = async (event: ParcelRegisteredEvent): Promise<void> => {
         await putPickupOrder(
             {
                 parcelId: event.detail.data.parcelId,
-                cityCodename: event.detail.data.transitWarehouses[0].cityCodename,
+                warehouseId: event.detail.data.transitWarehouses[0].warehouseId,
                 date: event.detail.data.pickupDate,
                 location: event.detail.data.pickupLocation,
                 warehouse: event.detail.data.transitWarehouses[0],

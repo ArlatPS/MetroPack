@@ -1,18 +1,18 @@
 import axios from 'axios';
 import { intToUuid, uuidToInt } from '../helpers/id';
 
-interface Vehicle {
+export interface Vehicle {
     id: string;
     capacity: number;
 }
 
-interface Warehouse {
+export interface Warehouse {
     id: string;
     location: Location;
     timeWindow: [number, number];
 }
 
-interface Delivery {
+export interface Delivery {
     id: string;
     location: Location;
 }
@@ -77,8 +77,8 @@ export async function createDeliveryJobs(
                     skills: [1],
                     start: [warehouse.location.longitude, warehouse.location.latitude],
                     end: [warehouse.location.longitude, warehouse.location.latitude],
-                    capacity: [vehicle.capacity],
-                    time_window: warehouse.timeWindow,
+                    capacity: [100000],
+                    time_window: [0, vehicle.capacity],
                 };
             }),
         },

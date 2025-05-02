@@ -30,22 +30,16 @@ export const handler = async (event: PreparePickupJobsCommandEvent, context: Con
             LIMIT,
             ddbDocClient,
         );
-        console.log(pickupOrders);
 
         const availableVehicles = await getAvailableVehicles(event.detail.data.warehouseId, 'PICKUP', ddbDocClient);
 
-        console.log(availableVehicles);
-
         const { jobs, vehicles } = await getOptimizedJobs(availableVehicles, warehouse, pickupOrders);
-
-        console.log(JSON.stringify(jobs, null, 2));
 
         const vehicleCapacityUpdateTransactItems = vehicles.map((vehicle) =>
             getVehicleCapacityUpdateTransactItem(vehicle),
         );
         const pickupJobsSaveTransactItems = jobs.map((job) => getAddPickupJobTransactItem(job));
 
-        console.log(pickupJobsSaveTransactItems);
         await ddbDocClient.send(
             new TransactWriteCommand({
                 TransactItems: [...vehicleCapacityUpdateTransactItems, ...pickupJobsSaveTransactItems],

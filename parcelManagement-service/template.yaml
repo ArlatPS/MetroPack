@@ -241,7 +241,7 @@ Resources:
             TableName: !Ref VehicleTable
         - DynamoDBReadPolicy:
             TableName: !Ref WarehouseTable
-        - DynamoDBReadPolicy:
+        - DynamoDBCrudPolicy:
             TableName: !Ref PickupOrderTable
         - Statement:
             - Effect: Allow

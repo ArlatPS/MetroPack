@@ -1,50 +1,20 @@
 import { Context } from 'aws-lambda';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, TransactWriteCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 
 import { PreparePickupJobsCommandEvent } from '../types/events';
-import { getPickupOrders } from '../datasources/parcelOrderTables';
-import { getAvailableVehicles, getVehicleCapacityUpdateTransactItem } from '../datasources/vehicleTable';
-import { getOptimizedJobs } from '../datasources/routingService';
-import { getWarehouse } from '../datasources/warehouseTable';
-import { getAddPickupJobTransactItem } from '../datasources/jobsTables';
 import { putEvents } from '../datasources/parcelManagementEventBridge';
 import { createPickupJobCreatedEvent } from '../helpers/jobEventsHelpers';
+import { ParcelManagement } from '../aggregates/parcelManagement';
 
 const client = new DynamoDBClient({});
 const ddbDocClient = DynamoDBDocumentClient.from(client);
 
-const LIMIT = 50;
-
 export const handler = async (event: PreparePickupJobsCommandEvent, context: Context): Promise<void> => {
     try {
-        const warehouse = await getWarehouse(event.detail.data.warehouseId, ddbDocClient);
+        const parcelManagement = new ParcelManagement(ddbDocClient, context);
 
-        if (!warehouse) {
-            throw new Error(`Warehouse ${event.detail.data.warehouseId} not found`);
-        }
-
-        const pickupOrders = await getPickupOrders(
-            event.detail.data.warehouseId,
-            event.detail.data.date,
-            LIMIT,
-            ddbDocClient,
-        );
-
-        const availableVehicles = await getAvailableVehicles(event.detail.data.warehouseId, 'PICKUP', ddbDocClient);
-
-        const { jobs, vehicles } = await getOptimizedJobs(availableVehicles, warehouse, pickupOrders);
-
-        const vehicleCapacityUpdateTransactItems = vehicles.map((vehicle) =>
-            getVehicleCapacityUpdateTransactItem(vehicle),
-        );
-        const pickupJobsSaveTransactItems = jobs.map((job) => getAddPickupJobTransactItem(job));
-
-        await ddbDocClient.send(
-            new TransactWriteCommand({
-                TransactItems: [...vehicleCapacityUpdateTransactItems, ...pickupJobsSaveTransactItems],
-            }),
-        );
+        const jobs = await parcelManagement.createPickupJobs(event.detail.data.warehouseId, event.detail.data.date);
 
         await putEvents(jobs.map((job) => createPickupJobCreatedEvent(job, context)));
     } catch (err) {

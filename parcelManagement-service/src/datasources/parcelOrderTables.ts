@@ -112,6 +112,23 @@ export async function deletePickupOrders(parcelIds: string[], ddbDocClient: Dyna
     await batchDeleteItems(pickupOrderTable, parcelIds, ddbDocClient);
 }
 
+export function getDeletePickupOrderTransactItem(parcelId: string): object {
+    const pickupOrderTable = process.env.PICKUP_ORDER_TABLE;
+
+    if (!pickupOrderTable) {
+        throw new Error('PickupOrderTable is not set');
+    }
+
+    return {
+        Delete: {
+            TableName: pickupOrderTable,
+            Key: {
+                parcelId,
+            },
+        },
+    };
+}
+
 export async function deleteDeliveryOrders(parcelIds: string[], ddbDocClient: DynamoDBDocumentClient): Promise<void> {
     const deliveryOrderTable = process.env.DELIVERY_ORDER_TABLE;
 

@@ -11,6 +11,15 @@ interface RequestEvent {
 export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
     const body = JSON.parse(event.body || '{}') as RequestEvent;
 
+    if (!body.vehicles || !body.warehouse || !body.deliveries) {
+        return {
+            statusCode: 400,
+            body: JSON.stringify({
+                message: 'vehicles, warehouse, and deliveries are required',
+            }),
+        };
+    }
+
     try {
         return {
             statusCode: 200,

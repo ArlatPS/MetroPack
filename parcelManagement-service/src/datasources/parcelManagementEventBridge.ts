@@ -22,3 +22,23 @@ export async function putEvent(
 
     await client.send(putEventsCommand);
 }
+
+export async function putEvents(
+    events: { detailType: string; detail: object }[],
+    source = 'parcelManagementService',
+    client: EventBridgeClient = new EventBridgeClient({ region: process.env.AWS_REGION }),
+): Promise<void> {
+    if (!process.env.EVENT_BUS_NAME) {
+        throw new Error('EVENT_BUS_NAME is not defined');
+    }
+
+    const putEventsCommand = new PutEventsCommand({
+        Entries: events.map((event) => ({
+            EventBusName: process.env.EVENT_BUS_NAME,
+            Source: source,
+            DetailType: event.detailType,
+            Detail: JSON.stringify(event.detail),
+        })),
+    });
+    await client.send(putEventsCommand);
+}

@@ -1,18 +1,22 @@
+import { Context } from 'aws-lambda';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, TransactWriteCommand } from '@aws-sdk/lib-dynamodb';
 
 import { PreparePickupJobsCommandEvent } from '../types/events';
 import { getPickupOrders } from '../datasources/parcelOrderTables';
-import { getAvailableVehicles } from '../datasources/vehicleTable';
+import { getAvailableVehicles, getVehicleCapacityUpdateTransactItem } from '../datasources/vehicleTable';
 import { getOptimizedJobs } from '../datasources/routingService';
 import { getWarehouse } from '../datasources/warehouseTable';
+import { getAddPickupJobTransactItem } from '../datasources/jobsTables';
+import { putEvents } from '../datasources/parcelManagementEventBridge';
+import { createPickupJobCreatedEvent } from '../helpers/jobEventsHelpers';
 
 const client = new DynamoDBClient({});
 const ddbDocClient = DynamoDBDocumentClient.from(client);
 
 const LIMIT = 50;
 
-export const handler = async (event: PreparePickupJobsCommandEvent): Promise<void> => {
+export const handler = async (event: PreparePickupJobsCommandEvent, context: Context): Promise<void> => {
     try {
         const warehouse = await getWarehouse(event.detail.data.warehouseId, ddbDocClient);
 
@@ -20,29 +24,37 @@ export const handler = async (event: PreparePickupJobsCommandEvent): Promise<voi
             throw new Error(`Warehouse ${event.detail.data.warehouseId} not found`);
         }
 
-        // get pickup orders, up to limit
         const pickupOrders = await getPickupOrders(
             event.detail.data.warehouseId,
             event.detail.data.date,
             LIMIT,
             ddbDocClient,
         );
-        // get available vehicles
+        console.log(pickupOrders);
+
         const availableVehicles = await getAvailableVehicles(event.detail.data.warehouseId, 'PICKUP', ddbDocClient);
 
-        // make request to routing service
-        const jobs = await getOptimizedJobs(availableVehicles, warehouse, pickupOrders);
+        console.log(availableVehicles);
+
+        const { jobs, vehicles } = await getOptimizedJobs(availableVehicles, warehouse, pickupOrders);
 
         console.log(JSON.stringify(jobs, null, 2));
 
-        // IN ONE TRANSACTION
-        // save pickup jobs
-        // update vehicle capacity
+        const vehicleCapacityUpdateTransactItems = vehicles.map((vehicle) =>
+            getVehicleCapacityUpdateTransactItem(vehicle),
+        );
+        const pickupJobsSaveTransactItems = jobs.map((job) => getAddPickupJobTransactItem(job));
 
-        // send event to event bus
-        // about pickup jobs created
+        console.log(pickupJobsSaveTransactItems);
+        await ddbDocClient.send(
+            new TransactWriteCommand({
+                TransactItems: [...vehicleCapacityUpdateTransactItems, ...pickupJobsSaveTransactItems],
+            }),
+        );
+
+        await putEvents(jobs.map((job) => createPickupJobCreatedEvent(job, context)));
     } catch (err) {
-        console.error('Error creating pickup order:', err);
-        throw new Error(`Error creating pickup order: ${err}`);
+        console.error('Error preparing pickup jobs:', err);
+        throw new Error(`Error preparing pickup jobs: ${err}`);
     }
 };

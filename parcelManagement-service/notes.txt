@@ -1,1 +1,17 @@
-{    "warehouseId": {        "S": "479fda7e-9324-40c6-8e1e-94ae82220c08"    },    "status": {        "S": "AVAILABLE"    },    "cityCodename": {        "S": "pl_kraków"    },    "location": {        "M": {            "latitude": {                "N": "50.0708704"            },            "longitude": {                "N": "19.9432021"            }        }    }}
+{
+ "warehouseId": "479fda7e-9324-40c6-8e1e-94ae82220c08",
+ "status": "AVAILABLE",
+ "cityCodename": "pl_kraków",
+ "location": {
+  "latitude": 50.0708704,
+  "longitude": 19.9432021
+ },
+ "range": 20
+}
+
+{
+ "vehicleId": "16cce0e7-7120-4717-ac69-a5950a519d04",
+ "capacity": 28800,
+ "type": "PICKUP",
+ "warehouseId": "479fda7e-9324-40c6-8e1e-94ae82220c08"
+}

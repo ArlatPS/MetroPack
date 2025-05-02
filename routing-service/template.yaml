@@ -23,7 +23,7 @@ Resources:
         Api:
           Type: Api
           Properties:
-            Path: /ors
+            Path: /createDeliveryJobs
             Method: POST
       Policies:
         - AWSLambdaBasicExecutionRole

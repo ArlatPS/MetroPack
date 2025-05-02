@@ -13,8 +13,8 @@ export async function getAvailableVehicles(
     warehouseId: string,
     type: VehicleType,
     ddbDocClient: DynamoDBDocumentClient,
-    limit: number = 3,
-    capacity: number = 50,
+    limit = 3,
+    capacity = 50,
 ): Promise<Vehicle[]> {
     const vehicleTable = process.env.VEHICLE_TABLE;
 
@@ -24,12 +24,15 @@ export async function getAvailableVehicles(
 
     const params = {
         TableName: vehicleTable,
-        IndexName: 'WarehouseTypeIndex',
-        KeyConditionExpression: 'warehouseId = :warehouseId AND type = :type',
-        FilterExpression: 'capacity > :capacity',
+        FilterExpression: 'warehouseId = :warehouseId AND #type = :type AND #capacity > :capacity',
+        ExpressionAttributeNames: {
+            '#type': 'type',
+            '#capacity': 'capacity',
+        },
         ExpressionAttributeValues: {
             ':warehouseId': warehouseId,
             ':type': type,
+            ':capacity': capacity,
         },
         Limit: limit,
     };
@@ -37,4 +40,28 @@ export async function getAvailableVehicles(
     const data = await ddbDocClient.send(new ScanCommand(params));
 
     return data.Items as Vehicle[];
+}
+
+export function getVehicleCapacityUpdateTransactItem(vehicle: Vehicle) {
+    const vehicleTable = process.env.VEHICLE_TABLE;
+
+    if (!vehicleTable) {
+        throw new Error('Vehicle table is not set');
+    }
+
+    return {
+        Update: {
+            TableName: vehicleTable,
+            Key: {
+                vehicleId: vehicle.vehicleId,
+            },
+            UpdateExpression: `SET #capacity = :val`,
+            ExpressionAttributeNames: {
+                '#capacity': 'capacity',
+            },
+            ExpressionAttributeValues: {
+                ':val': vehicle.capacity,
+            },
+        },
+    };
 }

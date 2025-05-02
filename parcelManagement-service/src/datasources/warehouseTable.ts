@@ -13,8 +13,9 @@ export async function getWarehouse(
 
     const params = {
         TableName: warehouseTable,
-        Key: {
-            id: warehouseId,
+        KeyConditionExpression: 'warehouseId = :warehouseId',
+        ExpressionAttributeValues: {
+            ':warehouseId': warehouseId,
         },
     };
 

@@ -18,7 +18,7 @@
       "name": "preparePickUpJobs"
     },
     "data": {
-      "cityCodename": "pl_kraków",
+      "warehouseId": "12345678-1234-1234-1234-123456789012",
       "date": "2022-01-02"
     }
   }

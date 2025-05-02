@@ -16,10 +16,30 @@ export interface PreparePickupJobsCommandEvent extends EventBase {
             service: 'parcelManagementService';
             category: 'domainEvent';
             type: 'command';
+            name: 'preparePickupJobs';
         };
         data: {
             warehouseId: string;
             date: string;
+        };
+    };
+}
+
+export interface PickupJobCreatedEvent extends EventBase {
+    detail: {
+        metadata: {
+            domain: 'parcelShipping';
+            subdomain: 'parcelManagement';
+            service: 'parcelManagementService';
+            category: 'domainEvent';
+            type: 'event';
+            name: 'pickupJobCreated';
+        };
+        data: {
+            jobId: string;
+            vehicleId: string;
+            warehouseId: string;
+            duration: number;
         };
     };
 }

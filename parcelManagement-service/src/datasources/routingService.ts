@@ -1,25 +1,16 @@
 import { SignatureV4 } from '@aws-sdk/signature-v4';
 import { HttpRequest, HttpResponse } from '@aws-sdk/protocol-http';
 import { Sha256 } from '@aws-crypto/sha256-js';
+import { randomUUID } from 'node:crypto';
 import { defaultProvider } from '@aws-sdk/credential-provider-node';
 import { NodeHttpHandler } from '@aws-sdk/node-http-handler';
 import { parseUrl } from '@aws-sdk/url-parser-node';
+
 import { Location } from '../valueObjects/location';
 import { Vehicle } from './vehicleTable';
 import { Warehouse } from '../aggregates/parcel';
-import { Order } from './parcelOrderTables';
-
-interface Step {
-    location: Location;
-    arrivalTime: string;
-    parcelId: string;
-}
-
-export interface Job {
-    vehicleId: string;
-    duration: number;
-    steps: Step[];
-}
+import { PickupOrder } from './parcelOrderTables';
+import { Job } from './jobsTables';
 
 interface JobFromApi {
     vehicleId: string;
@@ -48,8 +39,12 @@ export async function getSnap(location: Location): Promise<Location | null> {
     return responseBody as Location;
 }
 
-export async function getOptimizedJobs(vehicles: Vehicle[], warehouse: Warehouse, orders: Order[]): Promise<Job[]> {
-    const { response, responseBody } = await makeRequest('optimize', {
+export async function getOptimizedJobs(
+    vehicles: Vehicle[],
+    warehouse: Warehouse,
+    orders: PickupOrder[],
+): Promise<{ jobs: Job[]; vehicles: Vehicle[] }> {
+    const { response, responseBody } = await makeRequest('createDeliveryJobs', {
         vehicles: vehicles.map((vehicle) => ({ id: vehicle.vehicleId, capacity: vehicle.capacity })),
         warehouse: {
             id: warehouse.warehouseId,
@@ -58,21 +53,25 @@ export async function getOptimizedJobs(vehicles: Vehicle[], warehouse: Warehouse
                 longitude: warehouse.location.longitude,
             },
             timeWindow: [0, 8 * 60 * 60],
-            deliveries: orders.map((order) => ({
-                id: order.parcelId,
-                location: {
-                    latitude: order.location.latitude,
-                    longitude: order.location.longitude,
-                },
-            })),
         },
+        deliveries: orders.map((order) => ({
+            id: order.parcelId,
+            location: {
+                latitude: order.location.latitude,
+                longitude: order.location.longitude,
+            },
+        })),
     });
 
     if (response.statusCode !== 200) {
         throw new Error(`Failed to fetch optimized jobs. Status: ${response.statusCode}`);
     }
-    return responseBody.map(
+    const jobs: Job[] = responseBody.map(
         (job: JobFromApi): Job => ({
+            jobId: randomUUID(),
+            status: 'PENDING',
+            date: orders[0].date,
+            warehouseId: warehouse.warehouseId,
             vehicleId: job.vehicleId,
             duration: job.duration,
             steps: job.steps
@@ -84,6 +83,19 @@ export async function getOptimizedJobs(vehicles: Vehicle[], warehouse: Warehouse
                 })),
         }),
     );
+
+    const updatedVehicles = vehicles.map((vehicle): Vehicle => {
+        const job = jobs.find((job) => job.vehicleId === vehicle.vehicleId);
+        if (job) {
+            return {
+                ...vehicle,
+                capacity: vehicle.capacity - job.duration,
+            };
+        }
+        return vehicle;
+    });
+
+    return { jobs, vehicles: updatedVehicles };
 }
 
 async function makeRequest(

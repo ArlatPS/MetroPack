@@ -5,7 +5,12 @@ import { NotFoundError } from '../errors/NotFoundError';
 import { getDeletePickupOrderTransactItem, getPickupOrders } from '../datasources/parcelOrderTables';
 import { getAvailableVehicles, getVehicleCapacityUpdateTransactItem } from '../datasources/vehicleTable';
 import { getOptimizedJobs } from '../datasources/routingService';
-import { getAddPickupJobTransactItem, Job } from '../datasources/jobsTables';
+import {
+    getAddPickupJobTransactItem,
+    Job,
+    JobStatus,
+    updatePickupJobStatusByParcelId,
+} from '../datasources/jobsTables';
 
 export class ParcelManagement {
     private readonly ddbDocClient: DynamoDBDocumentClient;
@@ -56,5 +61,9 @@ export class ParcelManagement {
         );
 
         return jobs;
+    }
+
+    public async updatePickupJobStatusByParcelId(parcelId: string, status: JobStatus): Promise<void> {
+        await updatePickupJobStatusByParcelId(parcelId, status, this.ddbDocClient);
     }
 }

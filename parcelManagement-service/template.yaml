@@ -267,6 +267,36 @@ Resources:
         Target: es2020
         Sourcemap: true
 
+  ParcelPickedUpFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/parcelPickedUp.handler
+      Runtime: nodejs22.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 20
+      Events:
+        ParclPickedUpEventRule:
+          Type: EventBridgeRule
+          Properties:
+            EventBusName: !Ref EventBus
+            Pattern:
+              detail-type:
+                - 'parcelManagementService.parcelPickedUp'
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref PickupJobTable
+      Environment:
+        Variables:
+          PICKUP_JOB_TABLE: !Ref PickupJobTable
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+
   ParcelTable:
     Type: AWS::DynamoDB::Table
     Properties:
@@ -374,6 +404,8 @@ Resources:
           AttributeType: S
         - AttributeName: date
           AttributeType: S
+        - AttributeName: parcelId
+          AttributeType: S
       KeySchema:
         - AttributeName: jobId
           KeyType: HASH
@@ -387,6 +419,15 @@ Resources:
               KeyType: HASH
             - AttributeName: date
               KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+          ProvisionedThroughput:
+            ReadCapacityUnits: 1
+            WriteCapacityUnits: 1
+        - IndexName: ParcelIdIndex
+          KeySchema:
+            - AttributeName: parcelId
+              KeyType: HASH
           Projection:
             ProjectionType: ALL
           ProvisionedThroughput:

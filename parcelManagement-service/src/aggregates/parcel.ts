@@ -50,7 +50,7 @@ export interface ParcelRegisteredEvent extends EventBase {
     };
 }
 
-interface ParcelPickedUpEvent extends EventBase {
+export interface ParcelPickedUpEvent extends EventBase {
     detail: {
         metadata: {
             name: 'parcelPickedUp';
@@ -64,7 +64,7 @@ interface ParcelPickedUpEvent extends EventBase {
     };
 }
 
-interface ParcelDeliveredToWarehouseEvent extends EventBase {
+export interface ParcelDeliveredToWarehouseEvent extends EventBase {
     detail: {
         metadata: {
             name: 'parcelDeliveredToWarehouse';
@@ -78,7 +78,7 @@ interface ParcelDeliveredToWarehouseEvent extends EventBase {
     };
 }
 
-interface ParcelTransferStartedEvent extends EventBase {
+export interface ParcelTransferStartedEvent extends EventBase {
     detail: {
         metadata: {
             name: 'parcelTransferStarted';
@@ -92,7 +92,7 @@ interface ParcelTransferStartedEvent extends EventBase {
         };
     };
 }
-interface ParcelTransferCompletedEvent extends EventBase {
+export interface ParcelTransferCompletedEvent extends EventBase {
     detail: {
         metadata: {
             name: 'parcelTransferCompleted';
@@ -107,7 +107,7 @@ interface ParcelTransferCompletedEvent extends EventBase {
     };
 }
 
-interface ParcelDeliveryStartedEvent extends EventBase {
+export interface ParcelDeliveryStartedEvent extends EventBase {
     detail: {
         metadata: {
             name: 'parcelDeliveryStarted';
@@ -121,7 +121,7 @@ interface ParcelDeliveryStartedEvent extends EventBase {
     };
 }
 
-interface ParcelDeliveredEvent extends EventBase {
+export interface ParcelDeliveredEvent extends EventBase {
     detail: {
         metadata: {
             name: 'parcelDelivered';

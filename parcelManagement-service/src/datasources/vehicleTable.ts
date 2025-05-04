@@ -1,6 +1,6 @@
 import { DynamoDBDocumentClient, ScanCommand } from '@aws-sdk/lib-dynamodb';
 
-type VehicleType = 'PICKUP' | 'TRANSFER' | 'DELIVERY';
+type VehicleType = 'PICKUP' | 'DELIVERY';
 
 export interface Vehicle {
     vehicleId: string;

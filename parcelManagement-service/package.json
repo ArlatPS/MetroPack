@@ -20,6 +20,7 @@
         "@aws-sdk/url-parser-node": "^3.1.0",
         "@aws-sdk/util-dynamodb": "^3.799.0",
         "axios": "^1.8.4",
+        "date-fns": "^4.1.0",
         "esbuild": "^0.14.14"
     },
     "devDependencies": {

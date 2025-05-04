@@ -15,11 +15,11 @@ export interface Warehouse {
     range?: number;
 }
 
-enum ParcelStatus {
+export enum ParcelStatus {
     TO_PICKUP = 'TO_PICKUP',
     TRANSIT_TO_WAREHOUSE = 'TRANSIT_TO_WAREHOUSE',
     TO_TRANSFER = 'TO_TRANSFER',
-    TRANSFER = 'TRANSIT_BETWEEN_WAREHOUSES',
+    TRANSFER = 'TRANSFER',
     IN_WAREHOUSE = 'IN_WAREHOUSE',
     TRANSIT_TO_CUSTOMER = 'TRANSIT_TO_CUSTOMER',
     DELIVERED = 'DELIVERED',

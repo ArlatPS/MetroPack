@@ -41,7 +41,27 @@ export interface PickupJobCreatedEvent extends EventBase {
             warehouseId: string;
             duration: number;
             date: string;
-            status: 'PENDING'
+            status: 'PENDING';
+        };
+    };
+}
+
+export interface TransferJobCreatedEvent extends EventBase {
+    detail: {
+        metadata: {
+            domain: 'parcelShipping';
+            subdomain: 'parcelManagement';
+            service: 'parcelManagementService';
+            category: 'domainEvent';
+            type: 'event';
+            name: 'transferJobCreated';
+        };
+        data: {
+            jobId: string;
+            sourceWarehouseId: string;
+            destinationWarehouseId: string;
+            date: string;
+            status: 'PENDING';
         };
     };
 }

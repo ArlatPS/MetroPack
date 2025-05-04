@@ -7,12 +7,9 @@ import { Warehouse } from '../aggregates/parcel';
 
 export interface Order {
     parcelId: string;
-    location: Location;
-}
-
-export interface PickupOrder extends Order {
     warehouseId: string;
     date: string;
+    location: Location;
     warehouse: Warehouse;
 }
 
@@ -21,14 +18,14 @@ export async function getPickupOrders(
     date: string,
     limit: number,
     ddbDocClient: DynamoDBDocumentClient,
-): Promise<PickupOrder[]> {
+): Promise<Order[]> {
     const pickupOrderTable = process.env.PICKUP_ORDER_TABLE;
 
     if (!pickupOrderTable) {
         throw new Error('PickupOrderTable is not set');
     }
 
-    return (await getOrders(pickupOrderTable, warehouseId, date, limit, ddbDocClient)) as PickupOrder[];
+    return (await getOrders(pickupOrderTable, warehouseId, date, limit, ddbDocClient)) as Order[];
 }
 
 export async function getDeliveryOrders(
@@ -36,29 +33,14 @@ export async function getDeliveryOrders(
     date: string,
     limit: number,
     ddbDocClient: DynamoDBDocumentClient,
-): Promise<any[]> {
+): Promise<Order[]> {
     const deliveryOrderTable = process.env.DELIVERY_ORDER_TABLE;
 
     if (!deliveryOrderTable) {
         throw new Error('DeliveryOrderTable is not set');
     }
 
-    return await getOrders(deliveryOrderTable, warehouseId, date, limit, ddbDocClient);
-}
-
-export async function getTransferOrders(
-    warehouseId: string,
-    date: string,
-    limit: number,
-    ddbDocClient: DynamoDBDocumentClient,
-): Promise<any[]> {
-    const transferOrderTable = process.env.TRANSFER_ORDER_TABLE;
-
-    if (!transferOrderTable) {
-        throw new Error('TransferOrderTable is not set');
-    }
-
-    return await getOrders(transferOrderTable, warehouseId, date, limit, ddbDocClient);
+    return (await getOrders(deliveryOrderTable, warehouseId, date, limit, ddbDocClient)) as Order[];
 }
 
 async function getOrders(
@@ -87,7 +69,7 @@ async function getOrders(
     return data.Items || [];
 }
 
-export async function putPickupOrder(order: PickupOrder, ddbDocClient: DynamoDBDocumentClient): Promise<void> {
+export async function putPickupOrder(order: Order, ddbDocClient: DynamoDBDocumentClient): Promise<void> {
     const pickupOrderTable = process.env.PICKUP_ORDER_TABLE;
 
     if (!pickupOrderTable) {
@@ -96,6 +78,21 @@ export async function putPickupOrder(order: PickupOrder, ddbDocClient: DynamoDBD
 
     const params = {
         TableName: pickupOrderTable,
+        Item: marshall(order),
+    };
+
+    await ddbDocClient.send(new PutItemCommand(params));
+}
+
+export async function putDeliveryOrder(order: Order, ddbDocClient: DynamoDBDocumentClient): Promise<void> {
+    const deliveryOrderTable = process.env.DELIVERY_ORDER_TABLE;
+
+    if (!deliveryOrderTable) {
+        throw new Error('DeliveryOrderTable is not set');
+    }
+
+    const params = {
+        TableName: deliveryOrderTable,
         Item: marshall(order),
     };
 
@@ -137,16 +134,6 @@ export async function deleteDeliveryOrders(parcelIds: string[], ddbDocClient: Dy
     }
 
     await batchDeleteItems(deliveryOrderTable, parcelIds, ddbDocClient);
-}
-
-export async function deleteTransferOrders(parcelIds: string[], ddbDocClient: DynamoDBDocumentClient): Promise<void> {
-    const transferOrderTable = process.env.TRANSFER_ORDER_TABLE;
-
-    if (!transferOrderTable) {
-        throw new Error('TransferOrderTable is not set');
-    }
-
-    await batchDeleteItems(transferOrderTable, parcelIds, ddbDocClient);
 }
 
 async function batchDeleteItems(

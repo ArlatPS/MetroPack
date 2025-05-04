@@ -2,22 +2,22 @@ import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 
 import { ParcelRegisteredEvent } from '../aggregates/parcel';
-import { putPickupOrder } from '../datasources/parcelOrderTables';
+import { Context } from 'aws-lambda';
+import { ParcelManagement } from '../aggregates/parcelManagement';
 
 const client = new DynamoDBClient({});
 const ddbDocClient = DynamoDBDocumentClient.from(client);
 
-export const handler = async (event: ParcelRegisteredEvent): Promise<void> => {
+export const handler = async (event: ParcelRegisteredEvent, context: Context): Promise<void> => {
     try {
-        await putPickupOrder(
-            {
-                parcelId: event.detail.data.parcelId,
-                warehouseId: event.detail.data.transitWarehouses[0].warehouseId,
-                date: event.detail.data.pickupDate,
-                location: event.detail.data.pickupLocation,
-                warehouse: event.detail.data.transitWarehouses[0],
-            },
-            ddbDocClient,
+        const parcelManagement = new ParcelManagement(ddbDocClient, context);
+
+        await parcelManagement.createPickupOrder(
+            event.detail.data.parcelId,
+            event.detail.data.transitWarehouses[0].warehouseId,
+            event.detail.data.pickupDate,
+            event.detail.data.pickupLocation,
+            event.detail.data.transitWarehouses[0],
         );
     } catch (err) {
         console.error('Error creating pickup order:', err);

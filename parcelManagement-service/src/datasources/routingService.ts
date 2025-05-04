@@ -9,7 +9,7 @@ import { parseUrl } from '@aws-sdk/url-parser-node';
 import { Location } from '../valueObjects/location';
 import { Vehicle } from './vehicleTable';
 import { Warehouse } from '../aggregates/parcel';
-import { PickupOrder } from './parcelOrderTables';
+import { Order } from './parcelOrderTables';
 import { Job } from './jobsTables';
 
 interface JobFromApi {
@@ -42,7 +42,7 @@ export async function getSnap(location: Location): Promise<Location | null> {
 export async function getOptimizedJobs(
     vehicles: Vehicle[],
     warehouse: Warehouse,
-    orders: PickupOrder[],
+    orders: Order[],
 ): Promise<{ jobs: Job[]; vehicles: Vehicle[] }> {
     const { response, responseBody } = await makeRequest('createDeliveryJobs', {
         vehicles: vehicles.map((vehicle) => ({ id: vehicle.vehicleId, capacity: vehicle.capacity })),

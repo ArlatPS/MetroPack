@@ -40,6 +40,8 @@ export interface PickupJobCreatedEvent extends EventBase {
             vehicleId: string;
             warehouseId: string;
             duration: number;
+            date: string;
+            status: 'PENDING'
         };
     };
 }

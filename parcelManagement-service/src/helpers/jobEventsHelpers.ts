@@ -26,6 +26,8 @@ export function createPickupJobCreatedEvent(job: Job, context: Context): PickupJ
                 vehicleId: job.vehicleId,
                 warehouseId: job.warehouseId,
                 duration: job.duration,
+                date: job.date,
+                status: 'PENDING',
             },
         },
     };

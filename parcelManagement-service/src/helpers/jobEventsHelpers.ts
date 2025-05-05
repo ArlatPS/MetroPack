@@ -1,7 +1,7 @@
 import { Context } from 'aws-lambda';
 import { randomUUID } from 'node:crypto';
 import { Job, TransferJob } from '../datasources/jobsTables';
-import { PickupJobCreatedEvent, TransferJobCreatedEvent } from '../types/events';
+import { PickupJobCreatedEvent, TransferJobCreatedEvent } from '../types/jobEvents';
 
 export function createPickupJobCreatedEvent(job: Job, context: Context): PickupJobCreatedEvent {
     return {

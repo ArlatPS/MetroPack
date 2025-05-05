@@ -14,18 +14,21 @@ import {
     addParcelToTransferJob,
     addTransferJob,
     getAddPickupJobTransactItem,
+    getTransferJob,
     getTransferJobByConnection,
     Job,
     JobStatus,
     TransferJob,
     updatePickupJobStatus,
+    updateTransferJobStatus,
 } from '../datasources/jobsTables';
 import { Parcel, Warehouse } from './parcel';
 import { Location } from '../valueObjects/location';
 import { randomUUID } from 'node:crypto';
 import { getNextNight } from '../helpers/dateHelpers';
-import { putEvent } from '../datasources/parcelManagementEventBridge';
+import { putEvent, putEvents } from '../datasources/parcelManagementEventBridge';
 import { createTransferJobCreatedEvent } from '../helpers/jobEventsHelpers';
+import { createParcelTransferCompletedEvent, createParcelTransferStartedEvent } from '../helpers/parcelEventsHelpers';
 
 export class ParcelManagement {
     private readonly ddbDocClient: DynamoDBDocumentClient;
@@ -143,6 +146,48 @@ export class ParcelManagement {
         );
     }
 
+    public async handleTransferJobStarted(
+        jobId: string,
+        time: string,
+        sourceWarehouseId: string,
+        destinationWarehouseId: string,
+    ): Promise<void> {
+        const { transferJob, sourceWarehouse, destinationWarehouse } = await this.getTransferJobAndWarehouses(
+            jobId,
+            sourceWarehouseId,
+            destinationWarehouseId,
+        );
+
+        await updateTransferJobStatus(jobId, 'IN_PROGRESS', this.ddbDocClient);
+
+        const parcelTransferStartedEvents = transferJob.parcelIds.map((parcelId) =>
+            createParcelTransferStartedEvent(parcelId, time, sourceWarehouse, destinationWarehouse, this.context),
+        );
+
+        await putEvents(parcelTransferStartedEvents);
+    }
+
+    public async handleTransferJobCompleted(
+        jobId: string,
+        time: string,
+        sourceWarehouseId: string,
+        destinationWarehouseId: string,
+    ): Promise<void> {
+        const { transferJob, sourceWarehouse, destinationWarehouse } = await this.getTransferJobAndWarehouses(
+            jobId,
+            sourceWarehouseId,
+            destinationWarehouseId,
+        );
+
+        await updateTransferJobStatus(jobId, 'COMPLETED', this.ddbDocClient);
+
+        const parcelTransferCompletedEvents = transferJob.parcelIds.map((parcelId) =>
+            createParcelTransferCompletedEvent(parcelId, time, sourceWarehouse, destinationWarehouse, this.context),
+        );
+
+        await putEvents(parcelTransferCompletedEvents);
+    }
+
     private async createDeliveryOrder(
         parcelId: string,
         warehouseId: string,
@@ -187,5 +232,24 @@ export class ParcelManagement {
             await addTransferJob(job, this.ddbDocClient);
             await putEvent('transferJobCreated', createTransferJobCreatedEvent(job, this.context).detail);
         }
+    }
+
+    private async getTransferJobAndWarehouses(
+        jobId: string,
+        sourceWarehouseId: string,
+        destinationWarehouseId: string,
+    ): Promise<{ transferJob: TransferJob; sourceWarehouse: Warehouse; destinationWarehouse: Warehouse }> {
+        const transferJob = await getTransferJob(jobId, this.ddbDocClient);
+        if (!transferJob) {
+            throw new NotFoundError(`Transfer job ${jobId} not found`);
+        }
+
+        const sourceWarehouse = await getWarehouse(sourceWarehouseId, this.ddbDocClient);
+        const destinationWarehouse = await getWarehouse(destinationWarehouseId, this.ddbDocClient);
+        if (!sourceWarehouse || !destinationWarehouse) {
+            throw new NotFoundError(`Source or destination warehouse not found`);
+        }
+
+        return { transferJob, sourceWarehouse, destinationWarehouse };
     }
 }

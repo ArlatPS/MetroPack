@@ -3,7 +3,7 @@ import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 
 import { ParcelManagement } from '../aggregates/parcelManagement';
-import { PickupJobCompletedEvent, PickupJobStartedEvent } from '../types/events';
+import { PickupJobCompletedEvent, PickupJobStartedEvent } from '../types/jobEvents';
 
 const client = new DynamoDBClient({});
 const ddbDocClient = DynamoDBDocumentClient.from(client);

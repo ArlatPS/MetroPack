@@ -5,7 +5,7 @@ import { getParcelEvents, putParcelEvent } from '../datasources/parcelTable';
 import { gatAvailableWarehouses } from '../datasources/warehouseTable';
 import { createParcelRegisteredEvent } from '../helpers/parcelEventsHelpers';
 import { NotFoundError } from '../errors/NotFoundError';
-import { EventBase } from '../types/events';
+import { EventBase } from '../types/jobEvents';
 import { putEvent } from '../datasources/parcelManagementEventBridge';
 
 export interface Warehouse {
@@ -85,10 +85,9 @@ export interface ParcelTransferStartedEvent extends EventBase {
         } & ParcelEventMetadata;
         data: {
             parcelId: string;
-            vehicleId: string;
             time: string;
-            fromWarehouse: Warehouse;
-            toWarehouse: Warehouse;
+            sourceWarehouse: Warehouse;
+            destinationWarehouse: Warehouse;
         };
     };
 }
@@ -99,10 +98,9 @@ export interface ParcelTransferCompletedEvent extends EventBase {
         } & ParcelEventMetadata;
         data: {
             parcelId: string;
-            vehicleId: string;
             time: string;
-            fromWarehouse: Warehouse;
-            toWarehouse: Warehouse;
+            sourceWarehouse: Warehouse;
+            destinationWarehouse: Warehouse;
         };
     };
 }
@@ -328,14 +326,14 @@ export class Parcel {
     }
 
     private applyParcelTransferStartedEvent(event: ParcelTransferStartedEvent): void {
-        this.currentVehicleId = event.detail.data.vehicleId;
+        this.currentVehicleId = undefined;
         this.currentWarehouse = undefined;
         this.status = ParcelStatus.TRANSFER;
     }
 
     private applyParcelTransferCompletedEvent(event: ParcelTransferCompletedEvent): void {
         this.currentVehicleId = undefined;
-        this.currentWarehouse = event.detail.data.toWarehouse;
+        this.currentWarehouse = event.detail.data.destinationWarehouse;
 
         this.defineStateAfterDeliveryToWarehouse();
     }

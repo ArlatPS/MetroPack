@@ -1,5 +1,10 @@
 import { Context } from 'aws-lambda';
-import { ParcelRegisteredEvent, Warehouse } from '../aggregates/parcel';
+import {
+    ParcelRegisteredEvent,
+    ParcelTransferStartedEvent,
+    ParcelTransferCompletedEvent,
+    Warehouse,
+} from '../aggregates/parcel';
 import { Location } from '../valueObjects/location';
 import { randomUUID } from 'node:crypto';
 
@@ -36,6 +41,74 @@ export function createParcelRegisteredEvent(
                 deliveryLocation,
                 deliveryDate,
                 transitWarehouses,
+            },
+        },
+    };
+}
+
+export function createParcelTransferStartedEvent(
+    parcelId: string,
+    time: string,
+    sourceWarehouse: Warehouse,
+    destinationWarehouse: Warehouse,
+    context: Context,
+): ParcelTransferStartedEvent {
+    return {
+        version: '1',
+        id: randomUUID(),
+        detailType: 'parcelManagementService.parcelTransferStarted',
+        source: context.functionName,
+        time: new Date().toISOString(),
+        region: process.env.AWS_REGION || 'eu-central-1',
+        resources: [context.invokedFunctionArn],
+        detail: {
+            metadata: {
+                domain: 'parcelShipping',
+                subdomain: 'parcelManagement',
+                service: 'parcelManagementService',
+                category: 'domainEvent',
+                type: 'data',
+                name: 'parcelTransferStarted',
+            },
+            data: {
+                parcelId,
+                sourceWarehouse,
+                destinationWarehouse,
+                time,
+            },
+        },
+    };
+}
+
+export function createParcelTransferCompletedEvent(
+    parcelId: string,
+    time: string,
+    sourceWarehouse: Warehouse,
+    destinationWarehouse: Warehouse,
+    context: Context,
+): ParcelTransferCompletedEvent {
+    return {
+        version: '1',
+        id: randomUUID(),
+        detailType: 'parcelManagementService.parcelTransferCompleted',
+        source: context.functionName,
+        time: new Date().toISOString(),
+        region: process.env.AWS_REGION || 'eu-central-1',
+        resources: [context.invokedFunctionArn],
+        detail: {
+            metadata: {
+                domain: 'parcelShipping',
+                subdomain: 'parcelManagement',
+                service: 'parcelManagementService',
+                category: 'domainEvent',
+                type: 'data',
+                name: 'parcelTransferCompleted',
+            },
+            data: {
+                parcelId,
+                sourceWarehouse,
+                destinationWarehouse,
+                time,
             },
         },
     };

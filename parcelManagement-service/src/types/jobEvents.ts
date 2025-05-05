@@ -103,3 +103,41 @@ export interface PickupJobCompletedEvent extends EventBase {
         };
     };
 }
+
+export interface TransferJobStartedEvent extends EventBase {
+    detail: {
+        metadata: {
+            domain: 'parcelShipping';
+            subdomain: 'parcelManagement';
+            service: 'parcelManagementService';
+            category: 'domainEvent';
+            type: 'event';
+            name: 'transferJobStarted';
+        };
+        data: {
+            jobId: string;
+            sourceWarehouseId: string;
+            destinationWarehouseId: string;
+            time: string;
+        };
+    };
+}
+
+export interface TransferJobCompletedEvent extends EventBase {
+    detail: {
+        metadata: {
+            domain: 'parcelShipping';
+            subdomain: 'parcelManagement';
+            service: 'parcelManagementService';
+            category: 'domainEvent';
+            type: 'event';
+            name: 'transferJobCompleted';
+        };
+        data: {
+            jobId: string;
+            sourceWarehouseId: string;
+            destinationWarehouseId: string;
+            time: string;
+        };
+    };
+}

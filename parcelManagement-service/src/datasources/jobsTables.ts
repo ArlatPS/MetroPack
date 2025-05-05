@@ -114,7 +114,10 @@ export async function updatePickupJobStatus(
 //     return queryResult.Items[0] as Job;
 // }
 
-export async function getTransferJob(transferJobId: string, ddbDocClient: DynamoDBDocumentClient): Promise<Job | null> {
+export async function getTransferJob(
+    transferJobId: string,
+    ddbDocClient: DynamoDBDocumentClient,
+): Promise<TransferJob | null> {
     const transferJobTable = process.env.TRANSFER_JOB_TABLE;
 
     if (!transferJobTable) {
@@ -135,7 +138,7 @@ export async function getTransferJob(transferJobId: string, ddbDocClient: Dynamo
         return null;
     }
 
-    return queryResult.Items[0] as Job;
+    return queryResult.Items[0] as TransferJob;
 }
 
 export async function getTransferJobByConnection(

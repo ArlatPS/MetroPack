@@ -315,6 +315,7 @@ Resources:
             Pattern:
               detail-type:
                 - 'parcelManagementService.parcelDeliveredToWarehouse'
+                - 'parcelManagementService.parcelTransferCompleted'
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref PickupJobTable
@@ -335,6 +336,45 @@ Resources:
           PARCEL_TABLE: !Ref ParcelTable
           EVENT_BUS_NAME: !Ref EventBus
           DELIVERY_ORDER_TABLE: !Ref DeliveryOrderTable
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+
+  ParcelTransferEventsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/parcelTransferEvents.handler
+      Runtime: nodejs22.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 20
+      Events:
+        TransferJobEventRule:
+          Type: EventBridgeRule
+          Properties:
+            EventBusName: !Ref EventBus
+            Pattern:
+              detail-type:
+                - 'parcelManagementService.transferJobStarted'
+                - 'parcelManagementService.transferJobCompleted'
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref TransferJobTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref WarehouseTable
+        - Statement:
+            - Effect: Allow
+              Action: events:PutEvents
+              Resource: !GetAtt EventBus.Arn
+      Environment:
+        Variables:
+          TRANSFER_JOB_TABLE: !Ref TransferJobTable
+          WAREHOUSE_TABLE: !Ref WarehouseTable
+          EVENT_BUS_NAME: !Ref EventBus
     Metadata:
       BuildMethod: esbuild
       BuildProperties:

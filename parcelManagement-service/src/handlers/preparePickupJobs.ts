@@ -2,7 +2,7 @@ import { Context } from 'aws-lambda';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 
-import { PreparePickupJobsCommandEvent } from '../types/events';
+import { PreparePickupJobsCommandEvent } from '../types/jobEvents';
 import { putEvents } from '../datasources/parcelManagementEventBridge';
 import { createPickupJobCreatedEvent } from '../helpers/jobEventsHelpers';
 import { ParcelManagement } from '../aggregates/parcelManagement';

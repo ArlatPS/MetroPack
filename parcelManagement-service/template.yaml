@@ -448,8 +448,6 @@ Resources:
           AttributeType: S
         - AttributeName: date
           AttributeType: S
-        - AttributeName: parcelId
-          AttributeType: S
       KeySchema:
         - AttributeName: jobId
           KeyType: HASH
@@ -463,15 +461,6 @@ Resources:
               KeyType: HASH
             - AttributeName: date
               KeyType: RANGE
-          Projection:
-            ProjectionType: ALL
-          ProvisionedThroughput:
-            ReadCapacityUnits: 1
-            WriteCapacityUnits: 1
-        - IndexName: ParcelIdIndex
-          KeySchema:
-            - AttributeName: parcelId
-              KeyType: HASH
           Projection:
             ProjectionType: ALL
           ProvisionedThroughput:
@@ -489,7 +478,7 @@ Resources:
           AttributeType: S
         - AttributeName: date
           AttributeType: S
-        - AttributeName: parcelId
+        - AttributeName: connection
           AttributeType: S
       KeySchema:
         - AttributeName: jobId
@@ -509,50 +498,22 @@ Resources:
           ProvisionedThroughput:
             ReadCapacityUnits: 1
             WriteCapacityUnits: 1
-        - IndexName: ParcelIdIndex
+        - IndexName: ConnectionDateIndex
           KeySchema:
-            - AttributeName: parcelId
+            - AttributeName: connection
               KeyType: HASH
+            - AttributeName: date
+              KeyType: RANGE
           Projection:
-            ProjectionType: ALL
+              ProjectionType: ALL
           ProvisionedThroughput:
-            ReadCapacityUnits: 1
-            WriteCapacityUnits: 1
+              ReadCapacityUnits: 1
+              WriteCapacityUnits: 1
 
   DeliveryOrderTable:
     Type: AWS::DynamoDB::Table
     Properties:
       TableName: DeliveryOrderTable
-      AttributeDefinitions:
-        - AttributeName: parcelId
-          AttributeType: S
-        - AttributeName: warehouseId
-          AttributeType: S
-        - AttributeName: date
-          AttributeType: S
-      KeySchema:
-        - AttributeName: parcelId
-          KeyType: HASH
-      ProvisionedThroughput:
-        ReadCapacityUnits: 1
-        WriteCapacityUnits: 1
-      GlobalSecondaryIndexes:
-        - IndexName: WarehouseDateIndex
-          KeySchema:
-            - AttributeName: warehouseId
-              KeyType: HASH
-            - AttributeName: date
-              KeyType: RANGE
-          Projection:
-            ProjectionType: ALL
-          ProvisionedThroughput:
-            ReadCapacityUnits: 1
-            WriteCapacityUnits: 1
-
-  TransferOrderTable:
-    Type: AWS::DynamoDB::Table
-    Properties:
-      TableName: TransferOrderTable
       AttributeDefinitions:
         - AttributeName: parcelId
           AttributeType: S

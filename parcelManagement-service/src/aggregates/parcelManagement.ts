@@ -11,17 +11,17 @@ import {
 import { getAvailableVehicles, getVehicleCapacityUpdateTransactItem } from '../datasources/vehicleTable';
 import { getOptimizedJobs } from '../datasources/routingService';
 import {
+    addParcelToTransferJob,
     addTransferJob,
     getAddPickupJobTransactItem,
-    getPickupJobByParcelId,
-    getTransferJobByParcelId,
+    getTransferJob,
+    getTransferJobByConnection,
     Job,
     JobStatus,
     TransferJob,
-    updatePickupJobStatusByParcelId,
-    updateTransferJobStatus,
+    updatePickupJobStatus,
 } from '../datasources/jobsTables';
-import { Parcel, ParcelStatus, Warehouse } from './parcel';
+import { Parcel, Warehouse } from './parcel';
 import { Location } from '../valueObjects/location';
 import { randomUUID } from 'node:crypto';
 import { getNextNight } from '../helpers/dateHelpers';
@@ -79,8 +79,8 @@ export class ParcelManagement {
         return jobs;
     }
 
-    public async updatePickupJobStatusByParcelId(parcelId: string, status: JobStatus): Promise<void> {
-        await updatePickupJobStatusByParcelId(parcelId, status, this.ddbDocClient);
+    public async updatePickupJobStatus(pickupJobId: string, status: JobStatus): Promise<void> {
+        await updatePickupJobStatus(pickupJobId, status, this.ddbDocClient);
     }
 
     public async handleParcelDeliveredToWarehouse(parcelId: string, warehouseId: string): Promise<void> {
@@ -88,23 +88,23 @@ export class ParcelManagement {
         await parcel.loadState(parcelId);
         const parcelData = parcel.getDetails();
 
-        const pickupJob = await getPickupJobByParcelId(parcelId, this.ddbDocClient);
-        const transferJob = await getTransferJobByParcelId(parcelId, this.ddbDocClient);
-
-        if (parcelData.status === ParcelStatus.TRANSIT_TO_WAREHOUSE && pickupJob) {
-            await this.updatePickupJobStatusByParcelId(parcelId, 'COMPLETED');
-        } else if (parcelData.status === ParcelStatus.TRANSFER && transferJob) {
-            await updateTransferJobStatus(transferJob.jobId, 'COMPLETED', this.ddbDocClient);
-        } else {
-            // if the parcel status is lagging behind job statuses, check transferJob then pickupJob
-            if (transferJob) {
-                await updateTransferJobStatus(transferJob.jobId, 'COMPLETED', this.ddbDocClient);
-            } else if (pickupJob) {
-                await this.updatePickupJobStatusByParcelId(parcelId, 'COMPLETED');
-            } else {
-                throw new Error('Invalid parcel status and no job found');
-            }
-        }
+        // const pickupJob = pickupJobId ? await getPickupJob(parcelId, this.ddbDocClient) : null;
+        // const transferJob = transferJobId? await getTransferJobb(transferJobId, this.ddbDocClient) : null;
+        //
+        // if (parcelData.status === ParcelStatus.TRANSIT_TO_WAREHOUSE && pickupJob) {
+        //     await this.updatePickupJobStatusByParcelId(parcelId, 'COMPLETED');
+        // } else if (parcelData.status === ParcelStatus.TRANSFER && transferJob) {
+        //     await updateTransferJobStatus(transferJob.jobId, 'COMPLETED', this.ddbDocClient);
+        // } else {
+        //     // when the parcel status is lagging behind job statuses, check transferJob then pickupJob
+        //     if (transferJob) {
+        //         await updateTransferJobStatus(transferJob.jobId, 'COMPLETED', this.ddbDocClient);
+        //     } else if (pickupJob) {
+        //         await this.updatePickupJobStatus(pickupJob.jobId, 'COMPLETED');
+        //     } else {
+        //         throw new Error('Invalid parcel status and no job found');
+        //     }
+        // }
 
         const lastWarehouse = parcelData.transitWarehouses[parcelData.transitWarehouses.length - 1];
 
@@ -121,7 +121,7 @@ export class ParcelManagement {
                 parcelData.transitWarehouses[
                     parcelData.transitWarehouses.findIndex((warehouse) => warehouse.warehouseId === warehouseId) + 1
                 ];
-            await this.createTransferJob(warehouseId, nextWarehouse.warehouseId);
+            await this.addParcelToTransferJob(parcelId, warehouseId, nextWarehouse.warehouseId);
         }
     }
 
@@ -163,16 +163,32 @@ export class ParcelManagement {
         );
     }
 
-    private async createTransferJob(sourceWarehouseId: string, destinationWarehouseId: string): Promise<void> {
-        const job: TransferJob = {
-            jobId: randomUUID(),
-            status: 'PENDING',
-            date: getNextNight(),
-            sourceWarehouseId,
-            destinationWarehouseId,
-        };
+    private async addParcelToTransferJob(
+        parcelId: string,
+        sourceWarehouseId: string,
+        destinationWarehouseId: string,
+    ): Promise<void> {
+        const date = getNextNight();
+        const transferJob = await getTransferJobByConnection(
+            `${sourceWarehouseId}-${destinationWarehouseId}`,
+            date,
+            this.ddbDocClient,
+        );
 
-        await addTransferJob(job, this.ddbDocClient);
-        await putEvent('transferJobCreated', createTransferJobCreatedEvent(job, this.context).detail);
+        if (transferJob) {
+            await addParcelToTransferJob(parcelId, transferJob.jobId, this.ddbDocClient);
+        } else {
+            const job: TransferJob = {
+                jobId: randomUUID(),
+                status: 'PENDING',
+                date,
+                sourceWarehouseId,
+                destinationWarehouseId,
+                parcelIds: [parcelId],
+            };
+
+            await addTransferJob(job, this.ddbDocClient);
+            await putEvent('transferJobCreated', createTransferJobCreatedEvent(job, this.context).detail);
+        }
     }
 }

@@ -267,10 +267,10 @@ Resources:
         Target: es2020
         Sourcemap: true
 
-  ParcelPickedUpFunction:
+  UpdateJobEventsFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Handler: src/handlers/parcelPickedUp.handler
+      Handler: src/handlers/updateJobEvents.handler
       Runtime: nodejs22.x
       Architectures:
         - x86_64
@@ -283,7 +283,8 @@ Resources:
             EventBusName: !Ref EventBus
             Pattern:
               detail-type:
-                - 'parcelManagementService.parcelPickedUp'
+                - 'parcelManagementService.pickupJobStarted'
+                - 'parcelManagementService.pickupJobCompleted'
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref PickupJobTable

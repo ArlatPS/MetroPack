@@ -19,6 +19,7 @@ export interface TransferJob {
     sourceWarehouseId: string;
     destinationWarehouseId: string;
     parcelIds: string[];
+    connection: string;
 }
 
 export interface Job {
@@ -149,8 +150,9 @@ export async function getTransferJobByConnection(
     const queryParams = {
         TableName: transferJobTable,
         IndexName: 'ConnectionDateIndex',
-        KeyConditionExpression: 'connection = :connection AND #date = :date',
+        KeyConditionExpression: '#connection = :connection AND #date = :date',
         ExpressionAttributeNames: {
+            '#connection': 'connection',
             '#date': 'date',
         },
         ExpressionAttributeValues: {

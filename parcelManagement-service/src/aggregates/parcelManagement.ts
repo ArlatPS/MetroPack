@@ -14,7 +14,6 @@ import {
     addParcelToTransferJob,
     addTransferJob,
     getAddPickupJobTransactItem,
-    getTransferJob,
     getTransferJobByConnection,
     Job,
     JobStatus,
@@ -169,11 +168,8 @@ export class ParcelManagement {
         destinationWarehouseId: string,
     ): Promise<void> {
         const date = getNextNight();
-        const transferJob = await getTransferJobByConnection(
-            `${sourceWarehouseId}-${destinationWarehouseId}`,
-            date,
-            this.ddbDocClient,
-        );
+        const connection = `${sourceWarehouseId}-${destinationWarehouseId}`;
+        const transferJob = await getTransferJobByConnection(connection, date, this.ddbDocClient);
 
         if (transferJob) {
             await addParcelToTransferJob(parcelId, transferJob.jobId, this.ddbDocClient);
@@ -185,6 +181,7 @@ export class ParcelManagement {
                 sourceWarehouseId,
                 destinationWarehouseId,
                 parcelIds: [parcelId],
+                connection,
             };
 
             await addTransferJob(job, this.ddbDocClient);

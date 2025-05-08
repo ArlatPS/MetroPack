@@ -10,7 +10,11 @@ import {
     putDeliveryOrder,
     putPickupOrder,
 } from '../datasources/parcelOrderTables';
-import { getAvailableVehicles, getVehicleCapacityUpdateTransactItem } from '../datasources/vehicleTable';
+import {
+    getAvailableVehicles,
+    getVehicleCapacityUpdateTransactItem,
+    resetVehiclesCapacity,
+} from '../datasources/vehicleTable';
 import { getOptimizedJobs } from '../datasources/routingService';
 import {
     addParcelToTransferJob,
@@ -241,6 +245,10 @@ export class ParcelManagement {
         );
 
         await putEvents(deliveryJobStartedEvents);
+    }
+
+    public async resetVehicles(): Promise<void> {
+        await resetVehiclesCapacity(this.ddbDocClient);
     }
 
     private async createDeliveryOrder(

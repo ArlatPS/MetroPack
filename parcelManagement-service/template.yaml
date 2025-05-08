@@ -671,6 +671,34 @@ Resources:
             ReadCapacityUnits: 1
             WriteCapacityUnits: 1
 
+  # On schedule functions
+  ResetVehiclesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/resetVehicles.handler
+      Runtime: nodejs22.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 120
+      Events:
+        ScheduleEvent:
+          Type: Schedule
+          Properties:
+            Schedule: cron(0 5 * * ? *)
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref VehicleTable
+      Environment:
+        Variables:
+          VEHICLE_TABLE: !Ref VehicleTable
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+
 Outputs:
   ApiEndpoint:
     Description: API Gateway endpoint URL

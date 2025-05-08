@@ -1,4 +1,4 @@
-import { DynamoDBDocumentClient, ScanCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, ScanCommand, TransactWriteCommand } from '@aws-sdk/lib-dynamodb';
 
 type VehicleType = 'PICKUP' | 'DELIVERY';
 
@@ -64,4 +64,43 @@ export function getVehicleCapacityUpdateTransactItem(vehicle: Vehicle) {
             },
         },
     };
+}
+
+export async function resetVehiclesCapacity(ddbDocClient: DynamoDBDocumentClient): Promise<void> {
+    const vehicleTable = process.env.VEHICLE_TABLE;
+
+    if (!vehicleTable) {
+        throw new Error('Vehicle table is not set');
+    }
+
+    const params = {
+        TableName: vehicleTable,
+        ProjectionExpression: 'vehicleId',
+    };
+
+    const data = await ddbDocClient.send(new ScanCommand(params));
+
+    const vehicleIds = data.Items?.map((item) => item.vehicleId) || [];
+
+    const transactItems = vehicleIds.map((vehicleId) => ({
+        Update: {
+            TableName: vehicleTable,
+            Key: {
+                vehicleId,
+            },
+            UpdateExpression: `SET #capacity = :val`,
+            ExpressionAttributeNames: {
+                '#capacity': 'capacity',
+            },
+            ExpressionAttributeValues: {
+                ':val': 8 * 60 * 60,
+            },
+        },
+    }));
+
+    await ddbDocClient.send(
+        new TransactWriteCommand({
+            TransactItems: transactItems,
+        }),
+    );
 }

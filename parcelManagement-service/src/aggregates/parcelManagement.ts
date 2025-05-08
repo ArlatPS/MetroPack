@@ -17,6 +17,7 @@ import {
     addTransferJob,
     getAddDeliveryJobTransactItem,
     getAddPickupJobTransactItem,
+    getDeliveryJob,
     getTransferJob,
     getTransferJobByConnection,
     Job,
@@ -32,7 +33,11 @@ import { randomUUID } from 'node:crypto';
 import { getNextNight } from '../helpers/dateHelpers';
 import { putEvent, putEvents } from '../datasources/parcelManagementEventBridge';
 import { createTransferJobCreatedEvent } from '../helpers/jobEventsHelpers';
-import { createParcelTransferCompletedEvent, createParcelTransferStartedEvent } from '../helpers/parcelEventsHelpers';
+import {
+    createParcelDeliveryStartedEvent,
+    createParcelTransferCompletedEvent,
+    createParcelTransferStartedEvent,
+} from '../helpers/parcelEventsHelpers';
 
 export class ParcelManagement {
     private readonly ddbDocClient: DynamoDBDocumentClient;
@@ -222,6 +227,20 @@ export class ParcelManagement {
         );
 
         await putEvents(parcelTransferCompletedEvents);
+    }
+
+    public async handleDeliveryJobStarted(jobId: string, time: string): Promise<void> {
+        const deliveryJob = await getDeliveryJob(jobId, this.ddbDocClient);
+
+        if (!deliveryJob) {
+            throw new NotFoundError(`Delivery job ${jobId} not found`);
+        }
+
+        const deliveryJobStartedEvents = deliveryJob.steps.map(({ parcelId, location }) =>
+            createParcelDeliveryStartedEvent(parcelId, deliveryJob.vehicleId, time, location, this.context),
+        );
+
+        await putEvents(deliveryJobStartedEvents);
     }
 
     private async createDeliveryOrder(

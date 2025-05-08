@@ -172,6 +172,30 @@ export async function updateDeliveryJobStatus(
 //     return queryResult.Items[0] as Job;
 // }
 
+export async function getDeliveryJob(jobId: string, ddbDocClient: DynamoDBDocumentClient): Promise<Job | null> {
+    const deliveryJobTable = process.env.DELIVERY_JOB_TABLE;
+
+    if (!deliveryJobTable) {
+        throw new Error('Delivery job table is not set');
+    }
+
+    const queryParams = {
+        TableName: deliveryJobTable,
+        KeyConditionExpression: 'jobId = :jobId',
+        ExpressionAttributeValues: {
+            ':jobId': jobId,
+        },
+    };
+
+    const queryResult = await ddbDocClient.send(new QueryCommand(queryParams));
+
+    if (!queryResult.Items || queryResult.Items.length === 0) {
+        return null;
+    }
+
+    return queryResult.Items[0] as Job;
+}
+
 export async function getTransferJob(
     transferJobId: string,
     ddbDocClient: DynamoDBDocumentClient,

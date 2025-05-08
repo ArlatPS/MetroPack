@@ -342,10 +342,15 @@ Resources:
             TableName: !Ref PickupJobTable
         - DynamoDBCrudPolicy:
             TableName: !Ref DeliveryJobTable
+        - Statement:
+            - Effect: Allow
+              Action: events:PutEvents
+              Resource: !GetAtt EventBus.Arn
       Environment:
         Variables:
           PICKUP_JOB_TABLE: !Ref PickupJobTable
           DELIVERY_JOB_TABLE: !Ref DeliveryJobTable
+          EVENT_BUS_NAME: !Ref EventBus
     Metadata:
       BuildMethod: esbuild
       BuildProperties:

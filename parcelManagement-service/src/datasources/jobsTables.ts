@@ -86,6 +86,64 @@ export async function updatePickupJobStatus(
     await ddbDocClient.send(new UpdateCommand(updateParams));
 }
 
+export function getAddDeliveryJobTransactItem(job: Job) {
+    const deliveryJobTable = process.env.DELIVERY_JOB_TABLE;
+
+    if (!deliveryJobTable) {
+        throw new Error('Delivery job table is not set');
+    }
+
+    return {
+        Put: {
+            TableName: deliveryJobTable,
+            Item: {
+                jobId: job.jobId,
+                status: job.status,
+                date: job.date,
+                warehouseId: job.warehouseId,
+                vehicleId: job.vehicleId,
+                duration: job.duration,
+                steps: job.steps.map((step) => ({
+                    location: {
+                        longitude: step.location.longitude,
+                        latitude: step.location.latitude,
+                    },
+                    arrivalTime: step.arrivalTime,
+                    parcelId: step.parcelId,
+                })),
+            },
+        },
+    };
+}
+
+export async function updateDeliveryJobStatus(
+    deliveryJobId: string,
+    status: JobStatus,
+    ddbDocClient: DynamoDBDocumentClient,
+): Promise<void> {
+    const deliveryJobTable = process.env.DELIVERY_JOB_TABLE;
+
+    if (!deliveryJobTable) {
+        throw new Error('Delivery job table is not set');
+    }
+
+    const updateParams = {
+        TableName: deliveryJobTable,
+        Key: {
+            jobId: deliveryJobId,
+        },
+        UpdateExpression: 'SET #status = :status',
+        ExpressionAttributeNames: {
+            '#status': 'status',
+        },
+        ExpressionAttributeValues: {
+            ':status': status,
+        },
+    };
+
+    await ddbDocClient.send(new UpdateCommand(updateParams));
+}
+
 // export async function getPickupJobByParcelId(
 //     parcelId: string,
 //     ddbDocClient: DynamoDBDocumentClient,

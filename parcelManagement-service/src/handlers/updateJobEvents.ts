@@ -3,12 +3,17 @@ import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 
 import { ParcelManagement } from '../aggregates/parcelManagement';
-import { PickupJobCompletedEvent, PickupJobStartedEvent } from '../types/jobEvents';
+import {
+    DeliveryJobCompletedEvent,
+    DeliveryJobStartedEvent,
+    PickupJobCompletedEvent,
+    PickupJobStartedEvent,
+} from '../types/jobEvents';
 
 const client = new DynamoDBClient({});
 const ddbDocClient = DynamoDBDocumentClient.from(client);
 
-type JobEvents = PickupJobStartedEvent | PickupJobCompletedEvent;
+type JobEvents = PickupJobStartedEvent | PickupJobCompletedEvent | DeliveryJobStartedEvent | DeliveryJobCompletedEvent;
 
 export const handler = async (event: JobEvents, context: Context): Promise<void> => {
     try {
@@ -21,6 +26,14 @@ export const handler = async (event: JobEvents, context: Context): Promise<void>
             }
             case 'pickupJobCompleted': {
                 await parcelManagement.updatePickupJobStatus(event.detail.data.jobId, 'COMPLETED');
+                break;
+            }
+            case 'deliveryJobStarted': {
+                await parcelManagement.updateDeliveryJobStatus(event.detail.data.jobId, 'IN_PROGRESS');
+                break;
+            }
+            case 'deliveryJobCompleted': {
+                await parcelManagement.updateDeliveryJobStatus(event.detail.data.jobId, 'COMPLETED');
                 break;
             }
             default:

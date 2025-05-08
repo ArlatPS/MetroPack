@@ -126,6 +126,23 @@ export function getDeletePickupOrderTransactItem(parcelId: string): object {
     };
 }
 
+export function getDeleteDeliveryOrderTransactItem(parcelId: string): object {
+    const deliveryOrderTable = process.env.DELIVERY_ORDER_TABLE;
+
+    if (!deliveryOrderTable) {
+        throw new Error('DeliveryOrderTable is not set');
+    }
+
+    return {
+        Delete: {
+            TableName: deliveryOrderTable,
+            Key: {
+                parcelId,
+            },
+        },
+    };
+}
+
 export async function deleteDeliveryOrders(parcelIds: string[], ddbDocClient: DynamoDBDocumentClient): Promise<void> {
     const deliveryOrderTable = process.env.DELIVERY_ORDER_TABLE;
 

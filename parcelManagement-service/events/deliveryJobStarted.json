@@ -1,0 +1,27 @@
+{
+  "version": "1",
+  "id": "12345678-1234-1234-1234-123456789012",
+  "detail-type": "parcelManagementService.deliveryJobStarted",
+  "source": "lambdaName",
+  "time": "2022-01-01T00:00:00Z",
+  "region": "eu-central-1",
+  "resources": [
+    "arn:lambdaIdentifier"
+  ],
+  "detail": {
+    "metadata": {
+      "domain": "parcelShipping",
+      "subdomain": "parcelManagement",
+      "service": "parcelManagementService",
+      "category": "domainEvent",
+      "type": "data",
+      "name": "deliveryJobStarted"
+    },
+    "data": {
+      "jobId": "12345678-1234-1234-1234-123456789012",
+      "vehicleId": "12345678-1234-1234-1234-123456789012",
+      "warehouseId": "12345678-1234-1234-1234-123456789012",
+      "time": "01-01-2022"
+    }
+  }
+}

@@ -3,7 +3,9 @@ import { DynamoDBDocumentClient, TransactWriteCommand } from '@aws-sdk/lib-dynam
 import { getWarehouse } from '../datasources/warehouseTable';
 import { NotFoundError } from '../errors/NotFoundError';
 import {
+    getDeleteDeliveryOrderTransactItem,
     getDeletePickupOrderTransactItem,
+    getDeliveryOrders,
     getPickupOrders,
     putDeliveryOrder,
     putPickupOrder,
@@ -13,12 +15,14 @@ import { getOptimizedJobs } from '../datasources/routingService';
 import {
     addParcelToTransferJob,
     addTransferJob,
+    getAddDeliveryJobTransactItem,
     getAddPickupJobTransactItem,
     getTransferJob,
     getTransferJobByConnection,
     Job,
     JobStatus,
     TransferJob,
+    updateDeliveryJobStatus,
     updatePickupJobStatus,
     updateTransferJobStatus,
 } from '../datasources/jobsTables';
@@ -57,16 +61,9 @@ export class ParcelManagement {
             getVehicleCapacityUpdateTransactItem(vehicle),
         );
         const pickupJobsSaveTransactItems = jobs.map((job) => getAddPickupJobTransactItem(job));
-        const pickupOrdersDeleteTransactItems = jobs
-            .reduce((acc, job) => {
-                job.steps.forEach((step) => {
-                    if (step.parcelId) {
-                        acc.push(step.parcelId);
-                    }
-                });
-                return acc;
-            }, [] as string[])
-            .map((parcelId) => getDeletePickupOrderTransactItem(parcelId));
+        const pickupOrdersDeleteTransactItems = this.getParcelsFromJobs(jobs).map((parcelId) =>
+            getDeletePickupOrderTransactItem(parcelId),
+        );
 
         await this.ddbDocClient.send(
             new TransactWriteCommand({
@@ -81,8 +78,47 @@ export class ParcelManagement {
         return jobs;
     }
 
+    public async createDeliveryJobs(warehouseId: string, date: string): Promise<Job[]> {
+        const warehouse = await getWarehouse(warehouseId, this.ddbDocClient);
+
+        if (!warehouse) {
+            throw new NotFoundError(`Warehouse ${warehouseId} not found`);
+        }
+
+        const deliveryOrders = await getDeliveryOrders(warehouseId, date, this.limit, this.ddbDocClient);
+
+        const availableVehicles = await getAvailableVehicles(warehouseId, 'DELIVERY', this.ddbDocClient);
+
+        const { jobs, vehicles } = await getOptimizedJobs(availableVehicles, warehouse, deliveryOrders);
+
+        const vehicleCapacityUpdateTransactItems = vehicles.map((vehicle) =>
+            getVehicleCapacityUpdateTransactItem(vehicle),
+        );
+
+        const deliveryJobsSaveTransactItems = jobs.map((job) => getAddDeliveryJobTransactItem(job));
+        const deliveryOrdersDeleteTransactItems = this.getParcelsFromJobs(jobs).map((parcelId) =>
+            getDeleteDeliveryOrderTransactItem(parcelId),
+        );
+
+        await this.ddbDocClient.send(
+            new TransactWriteCommand({
+                TransactItems: [
+                    ...vehicleCapacityUpdateTransactItems,
+                    ...deliveryJobsSaveTransactItems,
+                    ...deliveryOrdersDeleteTransactItems,
+                ],
+            }),
+        );
+
+        return jobs;
+    }
+
     public async updatePickupJobStatus(pickupJobId: string, status: JobStatus): Promise<void> {
         await updatePickupJobStatus(pickupJobId, status, this.ddbDocClient);
+    }
+
+    public async updateDeliveryJobStatus(deliveryJobId: string, status: JobStatus): Promise<void> {
+        await updateDeliveryJobStatus(deliveryJobId, status, this.ddbDocClient);
     }
 
     public async handleParcelDeliveredToWarehouse(parcelId: string, warehouseId: string): Promise<void> {
@@ -251,5 +287,16 @@ export class ParcelManagement {
         }
 
         return { transferJob, sourceWarehouse, destinationWarehouse };
+    }
+
+    private getParcelsFromJobs(jobs: Job[]): string[] {
+        return jobs.reduce((acc, job) => {
+            job.steps.forEach((step) => {
+                if (step.parcelId) {
+                    acc.push(step.parcelId);
+                }
+            });
+            return acc;
+        }, [] as string[]);
     }
 }

@@ -1,7 +1,7 @@
 import { Context } from 'aws-lambda';
 import { randomUUID } from 'node:crypto';
 import { Job, TransferJob } from '../datasources/jobsTables';
-import { PickupJobCreatedEvent, TransferJobCreatedEvent } from '../types/jobEvents';
+import { DeliveryJobCreatedEvent, PickupJobCreatedEvent, TransferJobCreatedEvent } from '../types/jobEvents';
 
 export function createPickupJobCreatedEvent(job: Job, context: Context): PickupJobCreatedEvent {
     return {
@@ -20,6 +20,36 @@ export function createPickupJobCreatedEvent(job: Job, context: Context): PickupJ
                 category: 'domainEvent',
                 type: 'event',
                 name: 'pickupJobCreated',
+            },
+            data: {
+                jobId: job.jobId,
+                vehicleId: job.vehicleId,
+                warehouseId: job.warehouseId,
+                duration: job.duration,
+                date: job.date,
+                status: 'PENDING',
+            },
+        },
+    };
+}
+
+export function createDeliveryJobCreatedEvent(job: Job, context: Context): DeliveryJobCreatedEvent {
+    return {
+        version: '1',
+        id: randomUUID(),
+        detailType: 'parcelManagementService.deliveryJobCreated',
+        source: context.functionName,
+        time: new Date().toISOString(),
+        region: process.env.AWS_REGION || 'us-east-1',
+        resources: [context.invokedFunctionArn],
+        detail: {
+            metadata: {
+                domain: 'parcelShipping',
+                subdomain: 'parcelManagement',
+                service: 'parcelManagementService',
+                category: 'domainEvent',
+                type: 'event',
+                name: 'deliveryJobCreated',
             },
             data: {
                 jobId: job.jobId,

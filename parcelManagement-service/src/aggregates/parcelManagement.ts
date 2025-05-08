@@ -1,6 +1,6 @@
 import { Context } from 'aws-lambda';
 import { DynamoDBDocumentClient, TransactWriteCommand } from '@aws-sdk/lib-dynamodb';
-import { getWarehouse } from '../datasources/warehouseTable';
+import { getWarehouse, getWarehousesIds } from '../datasources/warehouseTable';
 import { NotFoundError } from '../errors/NotFoundError';
 import {
     getDeleteDeliveryOrderTransactItem,
@@ -34,14 +34,19 @@ import {
 import { Parcel, Warehouse } from './parcel';
 import { Location } from '../valueObjects/location';
 import { randomUUID } from 'node:crypto';
-import { getNextNight } from '../helpers/dateHelpers';
+import { getNextNight, getToday } from '../helpers/dateHelpers';
 import { putEvent, putEvents } from '../datasources/parcelManagementEventBridge';
-import { createTransferJobCreatedEvent } from '../helpers/jobEventsHelpers';
+import {
+    createPrepareDeliveryJobsCommand,
+    createPreparePickupJobsCommand,
+    createTransferJobCreatedEvent,
+} from '../helpers/jobEventsHelpers';
 import {
     createParcelDeliveryStartedEvent,
     createParcelTransferCompletedEvent,
     createParcelTransferStartedEvent,
 } from '../helpers/parcelEventsHelpers';
+import { PrepareDeliveryJobsCommandEvent, PreparePickupJobsCommandEvent } from '../types/jobEvents';
 
 export class ParcelManagement {
     private readonly ddbDocClient: DynamoDBDocumentClient;
@@ -249,6 +254,20 @@ export class ParcelManagement {
 
     public async resetVehicles(): Promise<void> {
         await resetVehiclesCapacity(this.ddbDocClient);
+    }
+
+    public async generateJobCommands(): Promise<void> {
+        const warehouses = await getWarehousesIds(this.ddbDocClient);
+
+        const date = getToday();
+
+        const events = warehouses.reduce((acc, warehouseId) => {
+            acc.push(createPreparePickupJobsCommand(warehouseId, date, this.context));
+            acc.push(createPrepareDeliveryJobsCommand(warehouseId, date, this.context));
+            return acc;
+        }, [] as (PreparePickupJobsCommandEvent | PrepareDeliveryJobsCommandEvent)[]);
+
+        await putEvents(events);
     }
 
     private async createDeliveryOrder(

@@ -12,3 +12,7 @@ export function getNextNight(): string {
     }
     return format(now, 'dd-MM-yyyy');
 }
+
+export function getToday(): string {
+    return format(new Date(), 'dd-MM-yyyy');
+}

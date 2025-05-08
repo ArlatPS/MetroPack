@@ -1,7 +1,13 @@
 import { Context } from 'aws-lambda';
 import { randomUUID } from 'node:crypto';
 import { Job, TransferJob } from '../datasources/jobsTables';
-import { DeliveryJobCreatedEvent, PickupJobCreatedEvent, TransferJobCreatedEvent } from '../types/jobEvents';
+import {
+    DeliveryJobCreatedEvent,
+    PickupJobCreatedEvent,
+    PrepareDeliveryJobsCommandEvent,
+    PreparePickupJobsCommandEvent,
+    TransferJobCreatedEvent,
+} from '../types/jobEvents';
 
 export function createPickupJobCreatedEvent(job: Job, context: Context): PickupJobCreatedEvent {
     return {
@@ -87,6 +93,66 @@ export function createTransferJobCreatedEvent(job: TransferJob, context: Context
                 status: 'PENDING',
                 sourceWarehouseId: job.sourceWarehouseId,
                 destinationWarehouseId: job.destinationWarehouseId,
+            },
+        },
+    };
+}
+
+export function createPreparePickupJobsCommand(
+    warehouseId: string,
+    date: string,
+    context: Context,
+): PreparePickupJobsCommandEvent {
+    return {
+        version: '1',
+        id: randomUUID(),
+        detailType: 'parcelManagementService.preparePickupJobs',
+        source: context.functionName,
+        time: new Date().toISOString(),
+        region: process.env.AWS_REGION || 'us-east-1',
+        resources: [context.invokedFunctionArn],
+        detail: {
+            metadata: {
+                domain: 'parcelShipping',
+                subdomain: 'parcelManagement',
+                service: 'parcelManagementService',
+                category: 'domainEvent',
+                type: 'command',
+                name: 'preparePickupJobs',
+            },
+            data: {
+                warehouseId,
+                date,
+            },
+        },
+    };
+}
+
+export function createPrepareDeliveryJobsCommand(
+    warehouseId: string,
+    date: string,
+    context: Context,
+): PrepareDeliveryJobsCommandEvent {
+    return {
+        version: '1',
+        id: randomUUID(),
+        detailType: 'parcelManagementService.prepareDeliveryJobs',
+        source: context.functionName,
+        time: new Date().toISOString(),
+        region: process.env.AWS_REGION || 'us-east-1',
+        resources: [context.invokedFunctionArn],
+        detail: {
+            metadata: {
+                domain: 'parcelShipping',
+                subdomain: 'parcelManagement',
+                service: 'parcelManagementService',
+                category: 'domainEvent',
+                type: 'command',
+                name: 'prepareDeliveryJobs',
+            },
+            data: {
+                warehouseId,
+                date,
             },
         },
     };

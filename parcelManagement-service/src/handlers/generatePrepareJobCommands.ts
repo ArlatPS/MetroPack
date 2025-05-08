@@ -11,9 +11,9 @@ export const handler = async (event: object, context: Context): Promise<void> =>
     try {
         const parcelManagement = new ParcelManagement(ddbDocClient, context);
 
-        await parcelManagement.resetVehicles();
+        await parcelManagement.generateJobCommands();
     } catch (err) {
-        console.error('Error resetting vehicles:', err);
-        throw new Error(`Error resetting vehicles: ${err}`);
+        console.error('Error generating commands:', err);
+        throw new Error(`Error generating commands: ${err}`);
     }
 };

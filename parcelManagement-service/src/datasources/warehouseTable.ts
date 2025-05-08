@@ -46,3 +46,20 @@ export async function gatAvailableWarehouses(ddbDocClient: DynamoDBDocumentClien
 
     return data.Items as Warehouse[];
 }
+
+export async function getWarehousesIds(ddbDocClient: DynamoDBDocumentClient): Promise<string[]> {
+    const warehouseTable = process.env.WAREHOUSE_TABLE;
+
+    if (!warehouseTable) {
+        throw new Error('Warehouse table is not set');
+    }
+
+    const params = {
+        TableName: warehouseTable,
+        ProjectionExpression: 'warehouseId',
+    };
+
+    const data = await ddbDocClient.send(new ScanCommand(params));
+
+    return data.Items?.map((item) => item.warehouseId) || [];
+}

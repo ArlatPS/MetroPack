@@ -699,6 +699,38 @@ Resources:
         Target: es2020
         Sourcemap: true
 
+  GeneratePrepareJobCommands:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/generatePrepareJobCommands.handler
+      Runtime: nodejs22.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 120
+      Events:
+        ScheduleEvent:
+          Type: Schedule
+          Properties:
+            Schedule: cron(0 6 * * ? *)
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref WarehouseTable
+        - Statement:
+          - Effect: Allow
+            Action: events:PutEvents
+            Resource: !GetAtt EventBus.Arn
+      Environment:
+        Variables:
+          WAREHOUSE_TABLE: !Ref WarehouseTable
+          EVENT_BUS_NAME: !Ref EventBus
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+
 Outputs:
   ApiEndpoint:
     Description: API Gateway endpoint URL

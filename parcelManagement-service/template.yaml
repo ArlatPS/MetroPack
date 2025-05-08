@@ -731,6 +731,136 @@ Resources:
         Target: es2020
         Sourcemap: true
 
+  # TRACKING
+  PrepareDeliveryJobTrackingFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/prepareDeliveryJobTracking.handler
+      Runtime: nodejs22.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 20
+      Events:
+        TransferJobEventRule:
+          Type: EventBridgeRule
+          Properties:
+            EventBusName: !Ref EventBus
+            Pattern:
+              detail-type:
+                - 'parcelManagementService.deliveryJobCreated'
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ParcelLocationTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref VehicleLocationTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref WarehouseTable
+      Environment:
+        Variables:
+          PARCEL_LOCATION_TABLE: !Ref ParcelLocationTable
+          VEHICLE_LOCATION_TABLE: !Ref VehicleLocationTable
+          WAREHOUSE_TABLE: !Ref WarehouseTable
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+
+  GetParcelLocationFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/getParcelLocation.handler
+      Runtime: nodejs22.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 20
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /parcel/location/{parcelId}
+            Method: GET
+            RestApiId: !Ref ApiGateway
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ParcelLocationTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref VehicleLocationTable
+      Environment:
+        Variables:
+          PARCEL_LOCATION_TABLE: !Ref ParcelLocationTable
+          VEHICLE_LOCATION_TABLE: !Ref VehicleLocationTable
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+
+  UpdateVehicleLocationFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/updateVehicleLocation.handler
+      Runtime: nodejs22.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 20
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /vehicle/location
+            Method: POST
+            RestApiId: !Ref ApiGateway
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref VehicleLocationTable
+      Environment:
+        Variables:
+          VEHICLE_LOCATION_TABLE: !Ref VehicleLocationTable
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+
+  ParcelLocationTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: ParcelLocationTable
+      AttributeDefinitions:
+        - AttributeName: parcelId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: parcelId
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+
+  VehicleLocationTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: VehicleLocationTable
+      AttributeDefinitions:
+        - AttributeName: vehicleId
+          AttributeType: S
+        - AttributeName: jobId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: vehicleId
+          KeyType: HASH
+        - AttributeName: jobId
+          KeyType: RANGE
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+
 Outputs:
   ApiEndpoint:
     Description: API Gateway endpoint URL

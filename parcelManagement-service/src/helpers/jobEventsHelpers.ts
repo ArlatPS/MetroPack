@@ -64,6 +64,7 @@ export function createDeliveryJobCreatedEvent(job: Job, context: Context): Deliv
                 duration: job.duration,
                 date: job.date,
                 status: 'PENDING',
+                parcels: job.steps.map((step) => step.parcelId),
             },
         },
     };

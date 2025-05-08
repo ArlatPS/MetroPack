@@ -80,6 +80,7 @@ export interface DeliveryJobCreatedEvent extends EventBase {
             duration: number;
             date: string;
             status: 'PENDING';
+            parcels: string[];
         };
     };
 }

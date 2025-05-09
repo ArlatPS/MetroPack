@@ -152,6 +152,52 @@ Resources:
         Target: es2020
         Sourcemap: true
 
+  UpdateParcelEventsQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: UpdateParcelEventsQueue.fifo
+      FifoQueue: true
+      ContentBasedDeduplication: true
+
+  UpdateParcelEventsRule:
+    Type: AWS::Events::Rule
+    Properties:
+      EventBusName: !Ref EventBus
+      EventPattern:
+        detail-type:
+          - 'parcelManagementService.parcelPickedUp'
+          - 'parcelManagementService.parcelDeliveredToWarehouse'
+          - 'parcelManagementService.parcelTransferStarted'
+          - 'parcelManagementService.parcelTransferCompleted'
+          - 'parcelManagementService.parcelDeliveryStarted'
+          - 'parcelManagementService.parcelDelivered'
+      Targets:
+        - Id: UpdateParcelEventsQueueTarget
+          RoleArn: !GetAtt EventBridgeRole.Arn
+          Arn: !GetAtt UpdateParcelEventsQueue.Arn
+          SqsParameters:
+            MessageGroupId: "default"
+
+  EventBridgeRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: EventBridgeSendMessageToSQS
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sqs:SendMessage
+                Resource: !GetAtt UpdateParcelEventsQueue.Arn
+
   UpdateParcelEventsFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -161,20 +207,15 @@ Resources:
         - x86_64
       MemorySize: 128
       Timeout: 5
+#      ReservedConcurrentExecutions: 5
       Events:
-        UpdateParcelEventsRule:
-          Type: EventBridgeRule
+        UpdateParcelEventsQueueEvent:
+          Type: SQS
           Properties:
-            EventBusName: !Ref EventBus
-            Pattern:
-              detail-type:
-                - 'parcelManagementService.parcelPickedUp'
-                - 'parcelManagementService.parcelDeliveredToWarehouse'
-                - 'parcelManagementService.parcelTransferStarted'
-                - 'parcelManagementService.parcelTransferCompleted'
-                - 'parcelManagementService.parcelDeliveryStarted'
-                - 'parcelManagementService.parcelDelivered'
+            Queue: !GetAtt UpdateParcelEventsQueue.Arn
       Policies:
+        - SQSPollerPolicy:
+            QueueName: !GetAtt UpdateParcelEventsQueue.QueueName
         - DynamoDBCrudPolicy:
             TableName: !Ref ParcelTable
       Environment:

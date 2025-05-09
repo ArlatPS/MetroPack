@@ -1,4 +1,4 @@
-import { Context } from 'aws-lambda';
+import { Context, SQSEvent } from 'aws-lambda';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 
@@ -10,18 +10,21 @@ const ddbDocClient = DynamoDBDocumentClient.from(client);
 
 type Events = ParcelDeliveredToWarehouseEvent | ParcelTransferCompletedEvent;
 
-export const handler = async (event: Events, context: Context): Promise<void> => {
-    try {
-        const parcelManagement = new ParcelManagement(ddbDocClient, context);
+export const handler = async (event: SQSEvent, context: Context): Promise<void> => {
+    for (const record of event.Records) {
+        try {
+            const messageBody = JSON.parse(record.body) as Events;
+            const parcelManagement = new ParcelManagement(ddbDocClient, context);
 
-        const warehouseId =
-            event.detail.metadata.name === 'parcelDeliveredToWarehouse'
-                ? (event as ParcelDeliveredToWarehouseEvent).detail.data.warehouse.warehouseId
-                : (event as ParcelTransferCompletedEvent).detail.data.destinationWarehouse.warehouseId;
+            const warehouseId =
+                messageBody.detail.metadata.name === 'parcelDeliveredToWarehouse'
+                    ? (messageBody as ParcelDeliveredToWarehouseEvent).detail.data.warehouse.warehouseId
+                    : (messageBody as ParcelTransferCompletedEvent).detail.data.destinationWarehouse.warehouseId;
 
-        await parcelManagement.handleParcelDeliveredToWarehouse(event.detail.data.parcelId, warehouseId);
-    } catch (err) {
-        console.error(`Error updating pickup job for parcel ${event.detail.data.parcelId}`, err);
-        throw new Error(`Error updating pickup job for parcel ${event.detail.data.parcelId} ${err}`);
+            await parcelManagement.handleParcelDeliveredToWarehouse(messageBody.detail.data.parcelId, warehouseId);
+        } catch (err) {
+            console.error('Error processing SQS message:', err);
+            throw new Error(`Error processing SQS message: ${err}`);
+        }
     }
 };

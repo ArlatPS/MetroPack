@@ -399,6 +399,41 @@ Resources:
         Target: es2020
         Sourcemap: true
 
+  DeliveryToWarehouseEventsQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: DeliveryToWarehouseEventsQueue.fifo
+      FifoQueue: true
+      ContentBasedDeduplication: true
+
+  DeliveryToWarehouseEventsQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref DeliveryToWarehouseEventsQueue
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sqs:SendMessage
+            Resource: !GetAtt DeliveryToWarehouseEventsQueue.Arn
+
+  DeliveryToWarehouseEventsRule:
+    Type: AWS::Events::Rule
+    Properties:
+      EventBusName: !Ref EventBus
+      EventPattern:
+        detail-type:
+          - 'parcelManagementService.parcelDeliveredToWarehouse'
+          - 'parcelManagementService.parcelTransferCompleted'
+      Targets:
+        - Id: DeliveryToWarehouseEventsQueueTarget
+          Arn: !GetAtt DeliveryToWarehouseEventsQueue.Arn
+          SqsParameters:
+            MessageGroupId: "default"
+
   DeliveryToWarehouseEventsFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -409,15 +444,14 @@ Resources:
       MemorySize: 128
       Timeout: 20
       Events:
-        DeliveryToWarehouseEventRule:
-          Type: EventBridgeRule
+        DeliveryToWarehouseEventsQueueEvent:
+          Type: SQS
           Properties:
-            EventBusName: !Ref EventBus
-            Pattern:
-              detail-type:
-                - 'parcelManagementService.parcelDeliveredToWarehouse'
-                - 'parcelManagementService.parcelTransferCompleted'
+            Queue: !GetAtt DeliveryToWarehouseEventsQueue.Arn
+            BatchSize: 1
       Policies:
+        - SQSPollerPolicy:
+            QueueName: !GetAtt DeliveryToWarehouseEventsQueue.QueueName
         - DynamoDBCrudPolicy:
             TableName: !Ref PickupJobTable
         - DynamoDBCrudPolicy:

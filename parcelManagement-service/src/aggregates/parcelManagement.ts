@@ -37,6 +37,8 @@ import { randomUUID } from 'node:crypto';
 import { getNextNight, getToday } from '../helpers/dateHelpers';
 import { putEvent, putEvents } from '../datasources/parcelManagementEventBridge';
 import {
+    createDeliveryJobCreatedEvent,
+    createPickupJobCreatedEvent,
     createPrepareDeliveryJobsCommand,
     createPreparePickupJobsCommand,
     createTransferJobCreatedEvent,
@@ -59,72 +61,110 @@ export class ParcelManagement {
         this.context = context;
     }
 
-    public async createPickupJobs(warehouseId: string, date: string): Promise<Job[]> {
+    public async createPickupJobs(warehouseId: string, date: string): Promise<void> {
         const warehouse = await getWarehouse(warehouseId, this.ddbDocClient);
 
         if (!warehouse) {
             throw new NotFoundError(`Warehouse ${warehouseId} not found`);
         }
-        const pickupOrders = await getPickupOrders(warehouseId, date, this.limit, this.ddbDocClient);
 
-        const availableVehicles = await getAvailableVehicles(warehouseId, 'PICKUP', this.ddbDocClient);
+        let init = true;
+        let lastPickupOrderKey: string | undefined;
 
-        const { jobs, vehicles } = await getOptimizedJobs(availableVehicles, warehouse, pickupOrders);
+        while (init || lastPickupOrderKey) {
+            init = false;
+            const { orders, lastKey } = await getPickupOrders(
+                warehouseId,
+                date,
+                this.limit,
+                this.ddbDocClient,
+                lastPickupOrderKey,
+            );
 
-        const vehicleCapacityUpdateTransactItems = vehicles.map((vehicle) =>
-            getVehicleCapacityUpdateTransactItem(vehicle),
-        );
-        const pickupJobsSaveTransactItems = jobs.map((job) => getAddPickupJobTransactItem(job));
-        const pickupOrdersDeleteTransactItems = this.getParcelsFromJobs(jobs).map((parcelId) =>
-            getDeletePickupOrderTransactItem(parcelId),
-        );
+            if (orders.length === 0) {
+                break;
+            }
 
-        await this.ddbDocClient.send(
-            new TransactWriteCommand({
-                TransactItems: [
-                    ...vehicleCapacityUpdateTransactItems,
-                    ...pickupJobsSaveTransactItems,
-                    ...pickupOrdersDeleteTransactItems,
-                ],
-            }),
-        );
+            lastPickupOrderKey = lastKey;
 
-        return jobs;
+            const availableVehicles = await getAvailableVehicles(warehouseId, 'PICKUP', this.ddbDocClient);
+
+            const { jobs, vehicles } = await getOptimizedJobs(availableVehicles, warehouse, orders);
+
+            const vehicleCapacityUpdateTransactItems = vehicles.map((vehicle) =>
+                getVehicleCapacityUpdateTransactItem(vehicle),
+            );
+            const pickupJobsSaveTransactItems = jobs.map((job) => getAddPickupJobTransactItem(job));
+            const pickupOrdersDeleteTransactItems = this.getParcelsFromJobs(jobs).map((parcelId) =>
+                getDeletePickupOrderTransactItem(parcelId),
+            );
+
+            await this.ddbDocClient.send(
+                new TransactWriteCommand({
+                    TransactItems: [
+                        ...vehicleCapacityUpdateTransactItems,
+                        ...pickupJobsSaveTransactItems,
+                        ...pickupOrdersDeleteTransactItems,
+                    ],
+                }),
+            );
+
+            await putEvents(jobs.map((job) => createPickupJobCreatedEvent(job, this.context)));
+        }
     }
 
-    public async createDeliveryJobs(warehouseId: string, date: string): Promise<Job[]> {
+    public async createDeliveryJobs(warehouseId: string, date: string): Promise<void> {
         const warehouse = await getWarehouse(warehouseId, this.ddbDocClient);
 
         if (!warehouse) {
             throw new NotFoundError(`Warehouse ${warehouseId} not found`);
         }
 
-        const deliveryOrders = await getDeliveryOrders(warehouseId, date, this.limit, this.ddbDocClient);
+        let init = true;
+        let lastDeliveryOrderKey: string | undefined;
 
-        const availableVehicles = await getAvailableVehicles(warehouseId, 'DELIVERY', this.ddbDocClient);
+        while (init || lastDeliveryOrderKey) {
+            init = false;
 
-        const { jobs, vehicles } = await getOptimizedJobs(availableVehicles, warehouse, deliveryOrders);
+            const { orders, lastKey } = await getDeliveryOrders(
+                warehouseId,
+                date,
+                this.limit,
+                this.ddbDocClient,
+                lastDeliveryOrderKey,
+            );
 
-        const vehicleCapacityUpdateTransactItems = vehicles.map((vehicle) =>
-            getVehicleCapacityUpdateTransactItem(vehicle),
-        );
+            if (orders.length === 0) {
+                break;
+            }
 
-        const deliveryJobsSaveTransactItems = jobs.map((job) => getAddDeliveryJobTransactItem(job));
-        const deliveryOrdersDeleteTransactItems = this.getParcelsFromJobs(jobs).map((parcelId) =>
-            getDeleteDeliveryOrderTransactItem(parcelId),
-        );
+            lastDeliveryOrderKey = lastKey;
 
-        await this.ddbDocClient.send(
-            new TransactWriteCommand({
-                TransactItems: [
-                    ...vehicleCapacityUpdateTransactItems,
-                    ...deliveryJobsSaveTransactItems,
-                    ...deliveryOrdersDeleteTransactItems,
-                ],
-            }),
-        );
+            const availableVehicles = await getAvailableVehicles(warehouseId, 'DELIVERY', this.ddbDocClient);
 
-        return jobs;
+            const { jobs, vehicles } = await getOptimizedJobs(availableVehicles, warehouse, orders);
+
+            const vehicleCapacityUpdateTransactItems = vehicles.map((vehicle) =>
+                getVehicleCapacityUpdateTransactItem(vehicle),
+            );
+
+            const deliveryJobsSaveTransactItems = jobs.map((job) => getAddDeliveryJobTransactItem(job));
+            const deliveryOrdersDeleteTransactItems = this.getParcelsFromJobs(jobs).map((parcelId) =>
+                getDeleteDeliveryOrderTransactItem(parcelId),
+            );
+
+            await this.ddbDocClient.send(
+                new TransactWriteCommand({
+                    TransactItems: [
+                        ...vehicleCapacityUpdateTransactItems,
+                        ...deliveryJobsSaveTransactItems,
+                        ...deliveryOrdersDeleteTransactItems,
+                    ],
+                }),
+            );
+
+            await putEvents(jobs.map((job) => createDeliveryJobCreatedEvent(job, this.context)));
+        }
     }
 
     public async updatePickupJobStatus(pickupJobId: string, status: JobStatus): Promise<void> {

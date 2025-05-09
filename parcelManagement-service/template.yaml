@@ -258,80 +258,70 @@ Resources:
         Target: es2020
         Sourcemap: true
 
-  PreparePickupJobsFunction:
+  PrepareJobsQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: PrepareJobsQueue.fifo
+      FifoQueue: true
+      ContentBasedDeduplication: true
+      VisibilityTimeout: 600
+
+  PrepareJobsQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref PrepareJobsQueue
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sqs:SendMessage
+            Resource: !GetAtt PrepareJobsQueue.Arn
+
+  PrepareJobsRule:
+    Type: AWS::Events::Rule
+    Properties:
+      EventBusName: !Ref EventBus
+      EventPattern:
+        detail-type:
+          - 'parcelManagementService.preparePickupJobs'
+          - 'parcelManagementService.prepareDeliveryJobs'
+      Targets:
+        - Id: PrepareJobsQueueTarget
+          Arn: !GetAtt PrepareJobsQueue.Arn
+          SqsParameters:
+            MessageGroupId: "default"
+
+  PrepareJobsFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Handler: src/handlers/preparePickupJobs.handler
+      Handler: src/handlers/prepareJobs.handler
       Runtime: nodejs22.x
       Architectures:
         - x86_64
       MemorySize: 128
-      Timeout: 20
+      Timeout: 300
       Events:
-        PreparePickupJobsEventRule:
-          Type: EventBridgeRule
+        PrepareJobsQueueEvent:
+          Type: SQS
           Properties:
-            EventBusName: !Ref EventBus
-            Pattern:
-              detail-type:
-                - 'parcelManagementService.preparePickupJobs'
+            Queue: !GetAtt PrepareJobsQueue.Arn
+            BatchSize: 1
       Policies:
+        - SQSPollerPolicy:
+            QueueName: !GetAtt PrepareJobsQueue.QueueName
         - DynamoDBCrudPolicy:
             TableName: !Ref PickupJobTable
-        - DynamoDBCrudPolicy:
-            TableName: !Ref VehicleTable
-        - DynamoDBReadPolicy:
-            TableName: !Ref WarehouseTable
-        - DynamoDBCrudPolicy:
-            TableName: !Ref PickupOrderTable
-        - Statement:
-            - Effect: Allow
-              Action: events:PutEvents
-              Resource: !GetAtt EventBus.Arn
-        - Statement:
-            - Effect: Allow
-              Action:
-                - execute-api:Invoke
-              Resource: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${RoutingServiceApiId}/*/*/createDeliveryJobs
-      Environment:
-        Variables:
-          PICKUP_JOB_TABLE: !Ref PickupJobTable
-          PICKUP_ORDER_TABLE: !Ref PickupOrderTable
-          VEHICLE_TABLE: !Ref VehicleTable
-          EVENT_BUS_NAME: !Ref EventBus
-          ROUTING_API_ID: !Ref RoutingServiceApiId
-          WAREHOUSE_TABLE: !Ref WarehouseTable
-    Metadata:
-      BuildMethod: esbuild
-      BuildProperties:
-        Minify: true
-        Target: es2020
-        Sourcemap: true
-
-  PrepareDeliveryJobsFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      Handler: src/handlers/prepareDeliveryJobs.handler
-      Runtime: nodejs22.x
-      Architectures:
-        - x86_64
-      MemorySize: 128
-      Timeout: 20
-      Events:
-        PreparePickupJobsEventRule:
-          Type: EventBridgeRule
-          Properties:
-            EventBusName: !Ref EventBus
-            Pattern:
-              detail-type:
-                - 'parcelManagementService.prepareDeliveryJobs'
-      Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref DeliveryJobTable
         - DynamoDBCrudPolicy:
             TableName: !Ref VehicleTable
         - DynamoDBReadPolicy:
             TableName: !Ref WarehouseTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref PickupOrderTable
         - DynamoDBCrudPolicy:
             TableName: !Ref DeliveryOrderTable
         - Statement:
@@ -345,12 +335,14 @@ Resources:
               Resource: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${RoutingServiceApiId}/*/*/createDeliveryJobs
       Environment:
         Variables:
+          PICKUP_JOB_TABLE: !Ref PickupJobTable
           DELIVERY_JOB_TABLE: !Ref DeliveryJobTable
-          DELIVERY_ORDER_TABLE: !Ref DeliveryOrderTable
           VEHICLE_TABLE: !Ref VehicleTable
           EVENT_BUS_NAME: !Ref EventBus
-          ROUTING_API_ID: !Ref RoutingServiceApiId
           WAREHOUSE_TABLE: !Ref WarehouseTable
+          PICKUP_ORDER_TABLE: !Ref PickupOrderTable
+          DELIVERY_ORDER_TABLE: !Ref DeliveryOrderTable
+          ROUTING_API_ID: !Ref RoutingServiceApiId
     Metadata:
       BuildMethod: esbuild
       BuildProperties:

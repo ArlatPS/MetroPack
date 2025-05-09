@@ -18,14 +18,19 @@ export async function getPickupOrders(
     date: string,
     limit: number,
     ddbDocClient: DynamoDBDocumentClient,
-): Promise<Order[]> {
+    startKey?: string,
+): Promise<{ orders: Order[]; lastKey?: string }> {
     const pickupOrderTable = process.env.PICKUP_ORDER_TABLE;
 
     if (!pickupOrderTable) {
         throw new Error('PickupOrderTable is not set');
     }
 
-    return (await getOrders(pickupOrderTable, warehouseId, date, limit, ddbDocClient)) as Order[];
+    const result = await getOrders(pickupOrderTable, warehouseId, date, limit, ddbDocClient, startKey);
+    return {
+        orders: result.orders as Order[],
+        lastKey: result.lastKey,
+    };
 }
 
 export async function getDeliveryOrders(
@@ -33,14 +38,19 @@ export async function getDeliveryOrders(
     date: string,
     limit: number,
     ddbDocClient: DynamoDBDocumentClient,
-): Promise<Order[]> {
+    startKey?: string,
+): Promise<{ orders: Order[]; lastKey?: string }> {
     const deliveryOrderTable = process.env.DELIVERY_ORDER_TABLE;
 
     if (!deliveryOrderTable) {
         throw new Error('DeliveryOrderTable is not set');
     }
 
-    return (await getOrders(deliveryOrderTable, warehouseId, date, limit, ddbDocClient)) as Order[];
+    const result = await getOrders(deliveryOrderTable, warehouseId, date, limit, ddbDocClient, startKey);
+    return {
+        orders: result.orders as Order[],
+        lastKey: result.lastKey,
+    };
 }
 
 async function getOrders(
@@ -49,7 +59,8 @@ async function getOrders(
     date: string,
     limit: number,
     ddbDocClient: DynamoDBDocumentClient,
-): Promise<object[]> {
+    startKey?: string,
+): Promise<{ orders: object[]; lastKey?: string }> {
     const params = {
         TableName: tableName,
         IndexName: 'WarehouseDateIndex',
@@ -62,11 +73,15 @@ async function getOrders(
             ':date': date,
         },
         Limit: limit,
+        ExclusiveStartKey: startKey ? { parcelId: startKey } : undefined,
     };
 
     const data = await ddbDocClient.send(new QueryCommand(params));
 
-    return data.Items || [];
+    return {
+        orders: data.Items || [],
+        lastKey: data.LastEvaluatedKey ? data.LastEvaluatedKey.parcelId : undefined,
+    };
 }
 
 export async function putPickupOrder(order: Order, ddbDocClient: DynamoDBDocumentClient): Promise<void> {

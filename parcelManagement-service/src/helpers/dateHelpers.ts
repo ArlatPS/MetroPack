@@ -16,3 +16,7 @@ export function getNextNight(): string {
 export function getToday(): string {
     return format(new Date(), 'dd-MM-yyyy');
 }
+
+export function getHour(): number {
+    return new Date().getHours();
+}

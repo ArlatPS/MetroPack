@@ -5,6 +5,8 @@ import {
     ParcelTransferCompletedEvent,
     Warehouse,
     ParcelDeliveryStartedEvent,
+    ParcelDeliveredEvent,
+    ParcelPickedUpEvent,
 } from '../aggregates/parcel';
 import { Location } from '../valueObjects/location';
 import { randomUUID } from 'node:crypto';
@@ -138,6 +140,74 @@ export function createParcelDeliveryStartedEvent(
                 category: 'domainEvent',
                 type: 'data',
                 name: 'parcelDeliveryStarted',
+            },
+            data: {
+                parcelId,
+                vehicleId,
+                time,
+                deliveryLocation,
+            },
+        },
+    };
+}
+
+export function createParcelPickedUpEvent(
+    parcelId: string,
+    vehicleId: string,
+    pickupLocation: Location,
+    context: Context,
+    time: string = new Date().toISOString(),
+): ParcelPickedUpEvent {
+    return {
+        version: '1',
+        id: randomUUID(),
+        detailType: 'parcelManagementService.parcelPickedUp',
+        source: context.functionName,
+        time,
+        region: process.env.AWS_REGION || 'eu-central-1',
+        resources: [context.invokedFunctionArn],
+        detail: {
+            metadata: {
+                domain: 'parcelShipping',
+                subdomain: 'parcelManagement',
+                service: 'parcelManagementService',
+                category: 'domainEvent',
+                type: 'data',
+                name: 'parcelPickedUp',
+            },
+            data: {
+                parcelId,
+                vehicleId,
+                time,
+                pickupLocation,
+            },
+        },
+    };
+}
+
+export function createParcelDeliveryCompletedEvent(
+    parcelId: string,
+    vehicleId: string,
+    deliveryLocation: Location,
+    context: Context,
+    time: string = new Date().toISOString(),
+): ParcelDeliveredEvent {
+    return {
+        version: '1',
+        id: randomUUID(),
+        detailType: 'parcelManagementService.parcelDelivered',
+        source: context.functionName,
+        time,
+        region: process.env.AWS_REGION || 'eu-central-1',
+        resources: [context.invokedFunctionArn],
+        detail: {
+            metadata: {
+                domain: 'parcelShipping',
+                subdomain: 'parcelManagement',
+                service: 'parcelManagementService',
+                category: 'domainEvent',
+                type: 'data',
+                name: 'parcelDelivered',
             },
             data: {
                 parcelId,

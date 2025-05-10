@@ -4,14 +4,16 @@ import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 
 import { DeliveryJobCreatedEvent, PickupJobCreatedEvent, TransferJobCreatedEvent } from '../../types/jobEvents';
 import { EventGenerator } from '../aggregates/eventGenerator';
+import { EventBridgeClient } from '@aws-sdk/client-eventbridge';
 
 const client = new DynamoDBClient({});
 const ddbDocClient = DynamoDBDocumentClient.from(client);
+const eventBridgeClient = new EventBridgeClient({ region: process.env.AWS_REGION });
 
 type JobCreatedEvent = PickupJobCreatedEvent | TransferJobCreatedEvent | DeliveryJobCreatedEvent;
 
 export const handler = async (event: SQSEvent, context: Context): Promise<void> => {
-    const eventGenerator = new EventGenerator(ddbDocClient, context);
+    const eventGenerator = new EventGenerator(ddbDocClient, context, eventBridgeClient);
 
     for (const record of event.Records) {
         let jobCreatedEvent: JobCreatedEvent;

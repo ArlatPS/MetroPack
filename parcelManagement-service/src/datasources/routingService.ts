@@ -18,7 +18,7 @@ interface JobFromApi {
     steps: {
         type: string;
         location: Location;
-        arrivalTime: string;
+        arrivalTime: number;
         deliveryId: string;
     }[];
 }

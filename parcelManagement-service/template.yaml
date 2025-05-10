@@ -929,7 +929,164 @@ Resources:
         WriteCapacityUnits: 1
 
   # EVENT GENERATOR SERVICE
+  EventGeneratorProcessJobsEventsQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: EventGeneratorProcessJobsEventsQueue.fifo
+      FifoQueue: true
+      ContentBasedDeduplication: true
 
+  EventGeneratorProcessJobsEventsQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref EventGeneratorProcessJobsEventsQueue
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sqs:SendMessage
+            Resource: !GetAtt EventGeneratorProcessJobsEventsQueue.Arn
+
+  EventGeneratorProcessJobsEventsRule:
+    Type: AWS::Events::Rule
+    Properties:
+      EventBusName: !Ref EventBus
+      EventPattern:
+        detail-type:
+          - 'parcelManagementService.pickupJobCreated'
+          - 'parcelManagementService.transferJobCreated'
+          - 'parcelManagementService.deliveryJobCreated'
+      Targets:
+        - Id: EventGeneratorProcessJobsQueueTarget
+          Arn: !GetAtt EventGeneratorProcessJobsEventsQueue.Arn
+          SqsParameters:
+            MessageGroupId: "default"
+
+  EventGeneratorProcessJobsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/eventGenerator/handlers/processJobs.handler
+      Runtime: nodejs22.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 10
+      Events:
+        EventGeneratorProcessJobsQueueEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt EventGeneratorProcessJobsEventsQueue.Arn
+            BatchSize: 10
+      Policies:
+        - SQSPollerPolicy:
+            QueueName: !GetAtt EventGeneratorProcessJobsEventsQueue.QueueName
+        - DynamoDBCrudPolicy:
+            TableName: !Ref EventGeneratorJobTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref EventGeneratorVehicleTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref WarehouseTable
+      Environment:
+        Variables:
+          EVENT_GENERATOR_JOB_TABLE: !Ref EventGeneratorJobTable
+          EVENT_GENERATOR_VEHICLE_TABLE: !Ref EventGeneratorVehicleTable
+          WAREHOUSE_TABLE: !Ref WarehouseTable
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+
+  EventGeneratorWorkerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/eventGenerator/handlers/worker.handler
+      Runtime: nodejs22.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 10
+      Events:
+        ScheduleEvent:
+          Type: Schedule
+          Properties:
+            Schedule: cron(0 5 * * ? *)
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref EventGeneratorJobTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref EventGeneratorVehicleTable
+        - Statement:
+            - Effect: Allow
+              Action:
+                - execute-api:Invoke
+              Resource: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGateway}/*/*/vehicle/location
+        - Statement:
+            - Effect: Allow
+              Action: events:PutEvents
+              Resource: !GetAtt EventBus.Arn
+      Environment:
+        Variables:
+          EVENT_GENERATOR_JOB_TABLE: !Ref EventGeneratorJobTable
+          EVENT_GENERATOR_VEHICLE_TABLE: !Ref EventGeneratorVehicleTable
+          API_GW_ID: !GetAtt ApiGateway.RootResourceId
+          EVENT_BUS_NAME: !Ref EventBus
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+
+
+  EventGeneratorVehicleTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: EventGeneratorVehicleTable
+      AttributeDefinitions:
+        - AttributeName: vehicleId
+          AttributeType: S
+
+      KeySchema:
+        - AttributeName: vehicleId
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+
+  EventGeneratorJobTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: EventGeneratorJobTable
+      AttributeDefinitions:
+        - AttributeName: jobId
+          AttributeType: S
+        - AttributeName: vehicleId
+          AttributeType: S
+        - AttributeName: status
+          AttributeType: S
+      KeySchema:
+        - AttributeName: jobId
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+      GlobalSecondaryIndexes:
+        - IndexName: VehicleStatusIndex
+          KeySchema:
+            - AttributeName: vehicleId
+              KeyType: HASH
+            - AttributeName: status
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+          ProvisionedThroughput:
+            ReadCapacityUnits: 1
+            WriteCapacityUnits: 1
 
 Outputs:
   ApiEndpoint:

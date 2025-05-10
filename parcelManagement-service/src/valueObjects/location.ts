@@ -63,4 +63,10 @@ export class Location {
     public equals(location: Location): boolean {
         return this.longitude === location.longitude && this.latitude === location.latitude && this.id === location.id;
     }
+
+    public getLocationBetween(location: Location, progress: number): Location {
+        const lon = parseFloat((this.longitude + (location.longitude - this.longitude) * progress).toFixed(7));
+        const lat = parseFloat((this.latitude + (location.latitude - this.latitude) * progress).toFixed(7));
+        return new Location(lon, lat);
+    }
 }

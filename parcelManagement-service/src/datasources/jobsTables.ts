@@ -8,7 +8,7 @@ export type JobStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED';
 
 export interface Step {
     location: Location;
-    arrivalTime: string;
+    arrivalTime: number;
     parcelId: string;
 }
 

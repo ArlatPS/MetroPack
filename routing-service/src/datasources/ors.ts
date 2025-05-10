@@ -61,7 +61,7 @@ export async function createDeliveryJobs(
                 uuidMap.set(id, delivery.id);
                 return {
                     id,
-                    service: 60,
+                    service: 0,
                     delivery: [1],
                     skills: [1],
                     location: [delivery.location.longitude, delivery.location.latitude],

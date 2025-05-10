@@ -6,7 +6,7 @@ import { Location } from '../valueObjects/location';
 
 export type JobStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED';
 
-interface Step {
+export interface Step {
     location: Location;
     arrivalTime: string;
     parcelId: string;
@@ -69,6 +69,10 @@ export async function updatePickupJobStatus(
 ): Promise<void> {
     const pickupJobTable = process.env.PICKUP_JOB_TABLE;
 
+    if (!pickupJobTable) {
+        throw new Error('Pickup job table is not set');
+    }
+
     const updateParams = {
         TableName: pickupJobTable,
         Key: {
@@ -84,6 +88,30 @@ export async function updatePickupJobStatus(
     };
 
     await ddbDocClient.send(new UpdateCommand(updateParams));
+}
+
+export async function getPickupJob(jobId: string, ddbDocClient: DynamoDBDocumentClient): Promise<Job | null> {
+    const pickupJobTable = process.env.PICKUP_JOB_TABLE;
+
+    if (!pickupJobTable) {
+        throw new Error('Pickup job table is not set');
+    }
+
+    const queryParams = {
+        TableName: pickupJobTable,
+        KeyConditionExpression: 'jobId = :jobId',
+        ExpressionAttributeValues: {
+            ':jobId': jobId,
+        },
+    };
+
+    const queryResult = await ddbDocClient.send(new QueryCommand(queryParams));
+
+    if (!queryResult.Items || queryResult.Items.length === 0) {
+        return null;
+    }
+
+    return queryResult.Items[0] as Job;
 }
 
 export function getAddDeliveryJobTransactItem(job: Job) {

@@ -928,6 +928,9 @@ Resources:
         ReadCapacityUnits: 1
         WriteCapacityUnits: 1
 
+  # EVENT GENERATOR SERVICE
+
+
 Outputs:
   ApiEndpoint:
     Description: API Gateway endpoint URL

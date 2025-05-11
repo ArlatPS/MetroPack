@@ -19,6 +19,7 @@ jobs:
           - dynamicPricing-service
           - billing-service
           - routing-service
+          - parcelManagement-service
 
     steps:
       - name: Checkout repository

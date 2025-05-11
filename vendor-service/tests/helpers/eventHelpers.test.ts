@@ -14,7 +14,7 @@ describe('Event Helpers', () => {
     });
     const mockContext = {
         functionName: 'testFunction',
-        invokedFunctionArn: 'arn:aws:lambda:us-east-1:123456789012:function:testFunction',
+        invokedFunctionArn: 'arn:aws:lambda:eu-central-1:123456789012:function:testFunction',
     } as Context;
 
     it('creates a vendor registered event', () => {
@@ -30,8 +30,8 @@ describe('Event Helpers', () => {
             detailType: 'vendorService.vendorRegistered',
             source: 'testFunction',
             time: '2025-01-01T12:00:00.000Z',
-            region: 'us-east-1',
-            resources: ['arn:aws:lambda:us-east-1:123456789012:function:testFunction'],
+            region: 'eu-central-1',
+            resources: ['arn:aws:lambda:eu-central-1:123456789012:function:testFunction'],
             detail: {
                 metadata: {
                     domain: 'customerService',
@@ -63,8 +63,8 @@ describe('Event Helpers', () => {
             detailType: 'vendorService.vendorDetailsChanged',
             source: 'testFunction',
             time: '2025-01-01T12:00:00.000Z',
-            region: 'us-east-1',
-            resources: ['arn:aws:lambda:us-east-1:123456789012:function:testFunction'],
+            region: 'eu-central-1',
+            resources: ['arn:aws:lambda:eu-central-1:123456789012:function:testFunction'],
             detail: {
                 metadata: {
                     domain: 'customerService',

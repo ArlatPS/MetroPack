@@ -1,0 +1,40 @@
+{
+  "version": "1",
+  "id": "12345678-1234-1234-1234-123456789012",
+  "detail-type": "parcelManagementService.parcelTransferCompleted",
+  "source": "lambdaName",
+  "time": "2022-01-05T14:00:00Z",
+  "region": "eu-central-1",
+  "resources": [
+    "arn:lambdaIdentifier"
+  ],
+  "detail": {
+    "metadata": {
+      "domain": "parcelShipping",
+      "subdomain": "parcelManagement",
+      "service": "parcelManagementService",
+      "category": "domainEvent",
+      "type": "data",
+      "name": "parcelTransferCompleted"
+    },
+    "data": {
+      "parcelId": "12345678-1234-1234-1234-123456789012",
+      "vehicleId": "12345678-1234-1234-1234-123456789012",
+      "time": "2022-01-05T14:00:00Z",
+      "fromWarehouse": {
+        "id": "12345678-1234-1234-1234-123456789012",
+        "location": {
+          "longitude": 23.456789,
+          "latitude": 87.654321
+        }
+      },
+      "toWarehouse": {
+        "id": "12345678-1234-1234-1234-123456789012",
+        "location": {
+          "longitude": 34.567890,
+          "latitude": 76.543210
+        }
+      }
+    }
+  }
+}

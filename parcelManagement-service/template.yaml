@@ -1,0 +1,1073 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: ParcelManagement Service
+
+Transform:
+  - AWS::Serverless-2016-10-31
+
+Parameters:
+  RoutingServiceApiId:
+    Type: String
+    Description: The API ID of the Routing Service API
+
+Resources:
+  ApiGateway:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: ParcelManagementServiceApi
+      StageName: prod
+
+  EventBridgeLambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/eventBridge.handler
+      Runtime: nodejs22.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 5
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - Statement:
+            - Effect: Allow
+              Action: events:PutEvents
+              Resource: !GetAtt EventBus.Arn
+      Environment:
+        Variables:
+          EVENT_BUS_NAME: !Ref EventBus
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Path: /putEvent
+            Method: POST
+            RestApiId: !Ref ApiGateway
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+
+  EventBus:
+    Type: AWS::Events::EventBus
+    Properties:
+      Name: ParcelManagementServiceBus
+
+  GetParcelFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/getParcel.handler
+      Runtime: nodejs22.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 5
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /parcel/{parcelId}
+            Method: GET
+            RestApiId: !Ref ApiGateway
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref ParcelTable
+      Environment:
+        Variables:
+          PARCEL_TABLE: !Ref ParcelTable
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+
+  RegisterParcelFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/registerParcel.handler
+      Runtime: nodejs22.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 5
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /parcel/register
+            Method: POST
+            RestApiId: !Ref ApiGateway
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ParcelTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref WarehouseTable
+        - Statement:
+            - Effect: Allow
+              Action: events:PutEvents
+              Resource: !GetAtt EventBus.Arn
+      Environment:
+        Variables:
+          PARCEL_TABLE: !Ref ParcelTable
+          WAREHOUSE_TABLE: !Ref WarehouseTable
+          EVENT_BUS_NAME: !Ref EventBus
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+
+  UpdateParcelEventsQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: UpdateParcelEventsQueue.fifo
+      FifoQueue: true
+      ContentBasedDeduplication: true
+
+  UpdateParcelEventsRule:
+    Type: AWS::Events::Rule
+    Properties:
+      EventBusName: !Ref EventBus
+      EventPattern:
+        detail-type:
+          - 'parcelManagementService.parcelPickedUp'
+          - 'parcelManagementService.parcelDeliveredToWarehouse'
+          - 'parcelManagementService.parcelTransferStarted'
+          - 'parcelManagementService.parcelTransferCompleted'
+          - 'parcelManagementService.parcelDeliveryStarted'
+          - 'parcelManagementService.parcelDelivered'
+      Targets:
+        - Id: UpdateParcelEventsQueueTarget
+          RoleArn: !GetAtt EventBridgeRole.Arn
+          Arn: !GetAtt UpdateParcelEventsQueue.Arn
+          SqsParameters:
+            MessageGroupId: "default"
+
+  EventBridgeRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: EventBridgeSendMessageToSQS
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sqs:SendMessage
+                Resource: !GetAtt UpdateParcelEventsQueue.Arn
+
+  UpdateParcelEventsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/updateParcelEvents.handler
+      Runtime: nodejs22.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 5
+#      ReservedConcurrentExecutions: 5
+      Events:
+        UpdateParcelEventsQueueEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt UpdateParcelEventsQueue.Arn
+      Policies:
+        - SQSPollerPolicy:
+            QueueName: !GetAtt UpdateParcelEventsQueue.QueueName
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ParcelTable
+      Environment:
+        Variables:
+          PARCEL_TABLE: !Ref ParcelTable
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+
+  CreatePickupOrderFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/createPickupOrder.handler
+      Runtime: nodejs22.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 5
+      Events:
+        CreatePickupOrderEventRule:
+          Type: EventBridgeRule
+          Properties:
+            EventBusName: !Ref EventBus
+            Pattern:
+              detail-type:
+                - 'parcelManagementService.parcelRegistered'
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref PickupOrderTable
+      Environment:
+        Variables:
+          PICKUP_ORDER_TABLE: !Ref PickupOrderTable
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+
+  PrepareJobsQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: PrepareJobsQueue.fifo
+      FifoQueue: true
+      ContentBasedDeduplication: true
+      VisibilityTimeout: 600
+
+  PrepareJobsQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref PrepareJobsQueue
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sqs:SendMessage
+            Resource: !GetAtt PrepareJobsQueue.Arn
+
+  PrepareJobsRule:
+    Type: AWS::Events::Rule
+    Properties:
+      EventBusName: !Ref EventBus
+      EventPattern:
+        detail-type:
+          - 'parcelManagementService.preparePickupJobs'
+          - 'parcelManagementService.prepareDeliveryJobs'
+      Targets:
+        - Id: PrepareJobsQueueTarget
+          Arn: !GetAtt PrepareJobsQueue.Arn
+          SqsParameters:
+            MessageGroupId: "default"
+
+  PrepareJobsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/prepareJobs.handler
+      Runtime: nodejs22.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 300
+      Events:
+        PrepareJobsQueueEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt PrepareJobsQueue.Arn
+            BatchSize: 1
+      Policies:
+        - SQSPollerPolicy:
+            QueueName: !GetAtt PrepareJobsQueue.QueueName
+        - DynamoDBCrudPolicy:
+            TableName: !Ref PickupJobTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DeliveryJobTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref VehicleTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref WarehouseTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref PickupOrderTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DeliveryOrderTable
+        - Statement:
+            - Effect: Allow
+              Action: events:PutEvents
+              Resource: !GetAtt EventBus.Arn
+        - Statement:
+            - Effect: Allow
+              Action:
+                - execute-api:Invoke
+              Resource: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${RoutingServiceApiId}/*/*/createDeliveryJobs
+      Environment:
+        Variables:
+          PICKUP_JOB_TABLE: !Ref PickupJobTable
+          DELIVERY_JOB_TABLE: !Ref DeliveryJobTable
+          VEHICLE_TABLE: !Ref VehicleTable
+          EVENT_BUS_NAME: !Ref EventBus
+          WAREHOUSE_TABLE: !Ref WarehouseTable
+          PICKUP_ORDER_TABLE: !Ref PickupOrderTable
+          DELIVERY_ORDER_TABLE: !Ref DeliveryOrderTable
+          ROUTING_API_ID: !Ref RoutingServiceApiId
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+
+  UpdateJobEventsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/updateJobEvents.handler
+      Runtime: nodejs22.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 20
+      Events:
+        UpdateJobEventsRule:
+          Type: EventBridgeRule
+          Properties:
+            EventBusName: !Ref EventBus
+            Pattern:
+              detail-type:
+                - 'parcelManagementService.pickupJobStarted'
+                - 'parcelManagementService.pickupJobCompleted'
+                - 'parcelManagementService.deliveryJobStarted'
+                - 'parcelManagementService.deliveryJobCompleted'
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref PickupJobTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DeliveryJobTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref WarehouseTable
+        - Statement:
+            - Effect: Allow
+              Action: events:PutEvents
+              Resource: !GetAtt EventBus.Arn
+      Environment:
+        Variables:
+          PICKUP_JOB_TABLE: !Ref PickupJobTable
+          DELIVERY_JOB_TABLE: !Ref DeliveryJobTable
+          EVENT_BUS_NAME: !Ref EventBus
+          WAREHOUSE_TABLE: !Ref WarehouseTable
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+
+  DeliveryToWarehouseEventsQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: DeliveryToWarehouseEventsQueue.fifo
+      FifoQueue: true
+      ContentBasedDeduplication: true
+
+  DeliveryToWarehouseEventsQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref DeliveryToWarehouseEventsQueue
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sqs:SendMessage
+            Resource: !GetAtt DeliveryToWarehouseEventsQueue.Arn
+
+  DeliveryToWarehouseEventsRule:
+    Type: AWS::Events::Rule
+    Properties:
+      EventBusName: !Ref EventBus
+      EventPattern:
+        detail-type:
+          - 'parcelManagementService.parcelDeliveredToWarehouse'
+          - 'parcelManagementService.parcelTransferCompleted'
+      Targets:
+        - Id: DeliveryToWarehouseEventsQueueTarget
+          Arn: !GetAtt DeliveryToWarehouseEventsQueue.Arn
+          SqsParameters:
+            MessageGroupId: "default"
+
+  DeliveryToWarehouseEventsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/deliveryToWarehouseEvents.handler
+      Runtime: nodejs22.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 20
+      Events:
+        DeliveryToWarehouseEventsQueueEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt DeliveryToWarehouseEventsQueue.Arn
+            BatchSize: 1
+      Policies:
+        - SQSPollerPolicy:
+            QueueName: !GetAtt DeliveryToWarehouseEventsQueue.QueueName
+        - DynamoDBCrudPolicy:
+            TableName: !Ref PickupJobTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref TransferJobTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DeliveryOrderTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref ParcelTable
+        - Statement:
+            - Effect: Allow
+              Action: events:PutEvents
+              Resource: !GetAtt EventBus.Arn
+      Environment:
+        Variables:
+          PICKUP_JOB_TABLE: !Ref PickupJobTable
+          TRANSFER_JOB_TABLE: !Ref TransferJobTable
+          PARCEL_TABLE: !Ref ParcelTable
+          EVENT_BUS_NAME: !Ref EventBus
+          DELIVERY_ORDER_TABLE: !Ref DeliveryOrderTable
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+
+  ParcelTransferEventsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/parcelTransferEvents.handler
+      Runtime: nodejs22.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 20
+      Events:
+        TransferJobEventRule:
+          Type: EventBridgeRule
+          Properties:
+            EventBusName: !Ref EventBus
+            Pattern:
+              detail-type:
+                - 'parcelManagementService.transferJobStarted'
+                - 'parcelManagementService.transferJobCompleted'
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref TransferJobTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref WarehouseTable
+        - Statement:
+            - Effect: Allow
+              Action: events:PutEvents
+              Resource: !GetAtt EventBus.Arn
+      Environment:
+        Variables:
+          TRANSFER_JOB_TABLE: !Ref TransferJobTable
+          WAREHOUSE_TABLE: !Ref WarehouseTable
+          EVENT_BUS_NAME: !Ref EventBus
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+
+  ParcelTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: ParcelTable
+      AttributeDefinitions:
+        - AttributeName: parcelId
+          AttributeType: S
+        - AttributeName: eventOrder
+          AttributeType: N
+      KeySchema:
+        - AttributeName: parcelId
+          KeyType: HASH
+        - AttributeName: eventOrder
+          KeyType: RANGE
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+
+  WarehouseTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: WarehouseTable
+      AttributeDefinitions:
+        - AttributeName: warehouseId
+          AttributeType: S
+        - AttributeName: status
+          AttributeType: S
+      KeySchema:
+        - AttributeName: warehouseId
+          KeyType: HASH
+        - AttributeName: status
+          KeyType: RANGE
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+
+  VehicleTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: VehicleTable
+      AttributeDefinitions:
+        - AttributeName: vehicleId
+          AttributeType: S
+        - AttributeName: warehouseId
+          AttributeType: S
+        - AttributeName: type
+          AttributeType: S
+      KeySchema:
+        - AttributeName: vehicleId
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+      GlobalSecondaryIndexes:
+        - IndexName: WarehouseTypeIndex
+          KeySchema:
+            - AttributeName: warehouseId
+              KeyType: HASH
+            - AttributeName: type
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+          ProvisionedThroughput:
+            ReadCapacityUnits: 1
+            WriteCapacityUnits: 1
+
+  PickupOrderTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: PickupOrderTable
+      AttributeDefinitions:
+        - AttributeName: parcelId
+          AttributeType: S
+        - AttributeName: warehouseId
+          AttributeType: S
+        - AttributeName: date
+          AttributeType: S
+      KeySchema:
+        - AttributeName: parcelId
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+      GlobalSecondaryIndexes:
+        - IndexName: WarehouseDateIndex
+          KeySchema:
+            - AttributeName: warehouseId
+              KeyType: HASH
+            - AttributeName: date
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+          ProvisionedThroughput:
+            ReadCapacityUnits: 1
+            WriteCapacityUnits: 1
+
+  PickupJobTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: PickupJobTable
+      AttributeDefinitions:
+        - AttributeName: jobId
+          AttributeType: S
+        - AttributeName: status
+          AttributeType: S
+        - AttributeName: date
+          AttributeType: S
+      KeySchema:
+        - AttributeName: jobId
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+      GlobalSecondaryIndexes:
+        - IndexName: StatusDateIndex
+          KeySchema:
+            - AttributeName: status
+              KeyType: HASH
+            - AttributeName: date
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+          ProvisionedThroughput:
+            ReadCapacityUnits: 1
+            WriteCapacityUnits: 1
+
+  TransferJobTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: TransferJobTable
+      AttributeDefinitions:
+        - AttributeName: jobId
+          AttributeType: S
+        - AttributeName: status
+          AttributeType: S
+        - AttributeName: date
+          AttributeType: S
+        - AttributeName: connection
+          AttributeType: S
+      KeySchema:
+        - AttributeName: jobId
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+      GlobalSecondaryIndexes:
+        - IndexName: StatusDateIndex
+          KeySchema:
+            - AttributeName: status
+              KeyType: HASH
+            - AttributeName: date
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+          ProvisionedThroughput:
+            ReadCapacityUnits: 1
+            WriteCapacityUnits: 1
+        - IndexName: ConnectionDateIndex
+          KeySchema:
+            - AttributeName: connection
+              KeyType: HASH
+            - AttributeName: date
+              KeyType: RANGE
+          Projection:
+              ProjectionType: ALL
+          ProvisionedThroughput:
+              ReadCapacityUnits: 1
+              WriteCapacityUnits: 1
+
+  DeliveryJobTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: DeliveryJobTable
+      AttributeDefinitions:
+        - AttributeName: jobId
+          AttributeType: S
+        - AttributeName: status
+          AttributeType: S
+        - AttributeName: date
+          AttributeType: S
+      KeySchema:
+        - AttributeName: jobId
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+      GlobalSecondaryIndexes:
+        - IndexName: StatusDateIndex
+          KeySchema:
+            - AttributeName: status
+              KeyType: HASH
+            - AttributeName: date
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+          ProvisionedThroughput:
+            ReadCapacityUnits: 1
+            WriteCapacityUnits: 1
+
+  DeliveryOrderTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: DeliveryOrderTable
+      AttributeDefinitions:
+        - AttributeName: parcelId
+          AttributeType: S
+        - AttributeName: warehouseId
+          AttributeType: S
+        - AttributeName: date
+          AttributeType: S
+      KeySchema:
+        - AttributeName: parcelId
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+      GlobalSecondaryIndexes:
+        - IndexName: WarehouseDateIndex
+          KeySchema:
+            - AttributeName: warehouseId
+              KeyType: HASH
+            - AttributeName: date
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+          ProvisionedThroughput:
+            ReadCapacityUnits: 1
+            WriteCapacityUnits: 1
+
+  # On schedule functions
+  ResetVehiclesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/resetVehicles.handler
+      Runtime: nodejs22.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 120
+      Events:
+        ScheduleEvent:
+          Type: Schedule
+          Properties:
+            Schedule: cron(0 5 * * ? *)
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref VehicleTable
+      Environment:
+        Variables:
+          VEHICLE_TABLE: !Ref VehicleTable
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+
+  GeneratePrepareJobCommands:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/generatePrepareJobCommands.handler
+      Runtime: nodejs22.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 120
+      Events:
+        ScheduleEvent:
+          Type: Schedule
+          Properties:
+            Schedule: cron(0 6 * * ? *)
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref WarehouseTable
+        - Statement:
+          - Effect: Allow
+            Action: events:PutEvents
+            Resource: !GetAtt EventBus.Arn
+      Environment:
+        Variables:
+          WAREHOUSE_TABLE: !Ref WarehouseTable
+          EVENT_BUS_NAME: !Ref EventBus
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+
+  # TRACKING
+  PrepareDeliveryJobTrackingFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/prepareDeliveryJobTracking.handler
+      Runtime: nodejs22.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 20
+      Events:
+        TransferJobEventRule:
+          Type: EventBridgeRule
+          Properties:
+            EventBusName: !Ref EventBus
+            Pattern:
+              detail-type:
+                - 'parcelManagementService.deliveryJobCreated'
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ParcelLocationTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref VehicleLocationTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref WarehouseTable
+      Environment:
+        Variables:
+          PARCEL_LOCATION_TABLE: !Ref ParcelLocationTable
+          VEHICLE_LOCATION_TABLE: !Ref VehicleLocationTable
+          WAREHOUSE_TABLE: !Ref WarehouseTable
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+
+  GetParcelLocationFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/getParcelLocation.handler
+      Runtime: nodejs22.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 20
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /parcel/location/{parcelId}
+            Method: GET
+            RestApiId: !Ref ApiGateway
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ParcelLocationTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref VehicleLocationTable
+      Environment:
+        Variables:
+          PARCEL_LOCATION_TABLE: !Ref ParcelLocationTable
+          VEHICLE_LOCATION_TABLE: !Ref VehicleLocationTable
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+
+  UpdateVehicleLocationFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/updateVehicleLocation.handler
+      Runtime: nodejs22.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 20
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /vehicle/location
+            Method: POST
+            RestApiId: !Ref ApiGateway
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref VehicleLocationTable
+      Environment:
+        Variables:
+          VEHICLE_LOCATION_TABLE: !Ref VehicleLocationTable
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+
+  ParcelLocationTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: ParcelLocationTable
+      AttributeDefinitions:
+        - AttributeName: parcelId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: parcelId
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+
+  VehicleLocationTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: VehicleLocationTable
+      AttributeDefinitions:
+        - AttributeName: vehicleId
+          AttributeType: S
+        - AttributeName: jobId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: vehicleId
+          KeyType: HASH
+        - AttributeName: jobId
+          KeyType: RANGE
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+
+  # EVENT GENERATOR SERVICE
+  EventGeneratorProcessJobsEventsQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: EventGeneratorProcessJobsEventsQueue.fifo
+      FifoQueue: true
+      ContentBasedDeduplication: true
+
+  EventGeneratorProcessJobsEventsQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref EventGeneratorProcessJobsEventsQueue
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sqs:SendMessage
+            Resource: !GetAtt EventGeneratorProcessJobsEventsQueue.Arn
+
+  EventGeneratorProcessJobsEventsRule:
+    Type: AWS::Events::Rule
+    Properties:
+      EventBusName: !Ref EventBus
+      EventPattern:
+        detail-type:
+          - 'parcelManagementService.pickupJobCreated'
+          - 'parcelManagementService.transferJobCreated'
+          - 'parcelManagementService.deliveryJobCreated'
+      Targets:
+        - Id: EventGeneratorProcessJobsQueueTarget
+          Arn: !GetAtt EventGeneratorProcessJobsEventsQueue.Arn
+          SqsParameters:
+            MessageGroupId: "default"
+
+  EventGeneratorProcessJobsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/eventGenerator/handlers/processJobs.handler
+      Runtime: nodejs22.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 10
+      Events:
+        EventGeneratorProcessJobsQueueEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt EventGeneratorProcessJobsEventsQueue.Arn
+            BatchSize: 10
+      Policies:
+        - SQSPollerPolicy:
+            QueueName: !GetAtt EventGeneratorProcessJobsEventsQueue.QueueName
+        - DynamoDBCrudPolicy:
+            TableName: !Ref EventGeneratorJobTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref EventGeneratorVehicleTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref WarehouseTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref PickupJobTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref DeliveryJobTable
+      Environment:
+        Variables:
+          EVENT_GENERATOR_JOB_TABLE: !Ref EventGeneratorJobTable
+          PICKUP_JOB_TABLE: !Ref PickupJobTable
+          DELIVERY_JOB_TABLE: !Ref DeliveryJobTable
+          EVENT_GENERATOR_VEHICLE_TABLE: !Ref EventGeneratorVehicleTable
+          WAREHOUSE_TABLE: !Ref WarehouseTable
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+
+  EventGeneratorWorkerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/eventGenerator/handlers/worker.handler
+      Runtime: nodejs22.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 10
+      Events:
+        ScheduleEvent:
+          Type: Schedule
+          Properties:
+            Schedule: cron(0 5 * * ? *)
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref EventGeneratorJobTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref EventGeneratorVehicleTable
+        - Statement:
+            - Effect: Allow
+              Action:
+                - execute-api:Invoke
+              Resource: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGateway}/*/*/vehicle/location
+        - Statement:
+            - Effect: Allow
+              Action: events:PutEvents
+              Resource: !GetAtt EventBus.Arn
+      Environment:
+        Variables:
+          EVENT_GENERATOR_JOB_TABLE: !Ref EventGeneratorJobTable
+          EVENT_GENERATOR_VEHICLE_TABLE: !Ref EventGeneratorVehicleTable
+          API_GW_ID: !Ref ApiGateway
+          EVENT_BUS_NAME: !Ref EventBus
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+
+  EventGeneratorVehicleTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: EventGeneratorVehicleTable
+      AttributeDefinitions:
+        - AttributeName: vehicleId
+          AttributeType: S
+
+      KeySchema:
+        - AttributeName: vehicleId
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+
+  EventGeneratorJobTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: EventGeneratorJobTable
+      AttributeDefinitions:
+        - AttributeName: jobId
+          AttributeType: S
+        - AttributeName: vehicleId
+          AttributeType: S
+        - AttributeName: status
+          AttributeType: S
+      KeySchema:
+        - AttributeName: jobId
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+      GlobalSecondaryIndexes:
+        - IndexName: VehicleStatusIndex
+          KeySchema:
+            - AttributeName: vehicleId
+              KeyType: HASH
+            - AttributeName: status
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+          ProvisionedThroughput:
+            ReadCapacityUnits: 1
+            WriteCapacityUnits: 1
+
+Outputs:
+  ApiEndpoint:
+    Description: API Gateway endpoint URL
+    Value: !Sub "https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/prod"
+Globals:
+  Function:
+    LoggingConfig:
+      LogFormat: JSON

@@ -14,7 +14,7 @@ export function createVendorRegisteredEvent(
         detailType: 'vendorService.vendorRegistered',
         source: context.functionName,
         time: new Date().toISOString(),
-        region: 'us-east-1',
+        region: process.env.AWS_REGION || 'eu-central-1',
         resources: [context.invokedFunctionArn],
         detail: {
             metadata: {
@@ -46,7 +46,7 @@ export function createVendorDetailsChangedEvent(
         detailType: 'vendorService.vendorDetailsChanged',
         source: context.functionName,
         time: new Date().toISOString(),
-        region: 'us-east-1',
+        region: process.env.AWS_REGION || 'eu-central-1',
         resources: [context.invokedFunctionArn],
         detail: {
             metadata: {

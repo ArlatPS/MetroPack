@@ -1,13 +1,15 @@
 import { DynamoDBDocumentClient, TransactWriteCommand } from '@aws-sdk/lib-dynamodb';
-import { getWarehouse } from '../datasources/warehouseTable';
+
 import { NotFoundError } from '../errors/NotFoundError';
+import { Location } from '../valueObjects/location';
+
+import { getWarehouse } from '../datasources/warehouseTable';
 import {
     getPutVehicleLocationTransactItem,
     getVehicleLocation,
     updateVehicleLocation,
 } from '../datasources/vehicleLocationTable';
 import { getParcelLocation, getPutParcelLocationTransactItem } from '../datasources/parcelLocationTable';
-import { Location } from '../valueObjects/location';
 
 export class Tracking {
     private readonly ddbDocClient: DynamoDBDocumentClient;

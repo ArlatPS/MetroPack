@@ -1,7 +1,13 @@
 import { Context } from 'aws-lambda';
+import { randomUUID } from 'node:crypto';
 import { DynamoDBDocumentClient, TransactWriteCommand } from '@aws-sdk/lib-dynamodb';
-import { getWarehouse, getWarehousesIds } from '../datasources/warehouseTable';
+
 import { NotFoundError } from '../errors/NotFoundError';
+import { PrepareDeliveryJobsCommandEvent, PreparePickupJobsCommandEvent } from '../types/jobEvents';
+import { Parcel, Warehouse } from './parcel';
+import { Location } from '../valueObjects/location';
+
+import { getWarehouse, getWarehousesIds } from '../datasources/warehouseTable';
 import {
     getDeleteDeliveryOrderTransactItem,
     getDeletePickupOrderTransactItem,
@@ -32,11 +38,9 @@ import {
     updatePickupJobStatus,
     updateTransferJobStatus,
 } from '../datasources/jobsTables';
-import { Parcel, Warehouse } from './parcel';
-import { Location } from '../valueObjects/location';
-import { randomUUID } from 'node:crypto';
-import { getNextNight, getToday } from '../helpers/dateHelpers';
 import { putEvents } from '../datasources/parcelManagementEventBridge';
+
+import { getNextNight, getToday } from '../helpers/dateHelpers';
 import {
     createDeliveryJobCreatedEvent,
     createPickupJobCreatedEvent,
@@ -50,7 +54,6 @@ import {
     createParcelTransferCompletedEvent,
     createParcelTransferStartedEvent,
 } from '../helpers/parcelEventsHelpers';
-import { PrepareDeliveryJobsCommandEvent, PreparePickupJobsCommandEvent } from '../types/jobEvents';
 
 export class ParcelManagement {
     private readonly ddbDocClient: DynamoDBDocumentClient;
@@ -181,24 +184,6 @@ export class ParcelManagement {
         const parcel = new Parcel(this.ddbDocClient, this.context);
         await parcel.loadState(parcelId);
         const parcelData = parcel.getDetails();
-
-        // const pickupJob = pickupJobId ? await getPickupJob(parcelId, this.ddbDocClient) : null;
-        // const transferJob = transferJobId? await getTransferJobb(transferJobId, this.ddbDocClient) : null;
-        //
-        // if (parcelData.status === ParcelStatus.TRANSIT_TO_WAREHOUSE && pickupJob) {
-        //     await this.updatePickupJobStatusByParcelId(parcelId, 'COMPLETED');
-        // } else if (parcelData.status === ParcelStatus.TRANSFER && transferJob) {
-        //     await updateTransferJobStatus(transferJob.jobId, 'COMPLETED', this.ddbDocClient);
-        // } else {
-        //     // when the parcel status is lagging behind job statuses, check transferJob then pickupJob
-        //     if (transferJob) {
-        //         await updateTransferJobStatus(transferJob.jobId, 'COMPLETED', this.ddbDocClient);
-        //     } else if (pickupJob) {
-        //         await this.updatePickupJobStatus(pickupJob.jobId, 'COMPLETED');
-        //     } else {
-        //         throw new Error('Invalid parcel status and no job found');
-        //     }
-        // }
 
         const lastWarehouse = parcelData.transitWarehouses[parcelData.transitWarehouses.length - 1];
 

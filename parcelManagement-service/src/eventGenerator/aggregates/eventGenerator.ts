@@ -1,7 +1,11 @@
-import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 import { Context } from 'aws-lambda';
-import { getDeliveryJob, getPickupJob } from '../../datasources/jobsTables';
+import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
+import { EventBridgeClient } from '@aws-sdk/client-eventbridge';
+
 import { NotFoundError } from '../../errors/NotFoundError';
+import { Location } from '../../valueObjects/location';
+
+import { getDeliveryJob, getPickupJob } from '../../datasources/jobsTables';
 import {
     deleteEventGeneratorJob,
     EventGeneratorJobStep,
@@ -18,7 +22,9 @@ import {
     putEventGeneratorVehicle,
 } from '../datasources/eventGeneratorVehicleTable';
 import { putEvents } from '../../datasources/parcelManagementEventBridge';
-import { EventBridgeClient } from '@aws-sdk/client-eventbridge';
+import { getWarehouse } from '../../datasources/warehouseTable';
+import { updateVehicleLocation } from '../datasources/tracking';
+
 import {
     createDeliveryJobCompletedEvent,
     createDeliveryJobStartedEvent,
@@ -28,10 +34,7 @@ import {
     createTransferJobStartedEvent,
 } from '../../helpers/jobEventsHelpers';
 import { getHour } from '../../helpers/dateHelpers';
-import { getWarehouse } from '../../datasources/warehouseTable';
-import { Location } from '../../valueObjects/location';
 import { createParcelDeliveryCompletedEvent, createParcelPickedUpEvent } from '../../helpers/parcelEventsHelpers';
-import { updateVehicleLocation } from '../datasources/tracking';
 
 export class EventGenerator {
     private readonly ddbDocClient: DynamoDBDocumentClient;

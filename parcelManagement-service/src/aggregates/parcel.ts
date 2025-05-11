@@ -1,12 +1,13 @@
 import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 import { Context } from 'aws-lambda';
+
+import { NotFoundError } from '../errors/NotFoundError';
+import { EventBase } from '../types/jobEvents';
 import { Location } from '../valueObjects/location';
 import { getParcelEvents, putParcelEvent } from '../datasources/parcelTable';
 import { gatAvailableWarehouses } from '../datasources/warehouseTable';
-import { createParcelRegisteredEvent } from '../helpers/parcelEventsHelpers';
-import { NotFoundError } from '../errors/NotFoundError';
-import { EventBase } from '../types/jobEvents';
 import { putEvent } from '../datasources/parcelManagementEventBridge';
+import { createParcelRegisteredEvent } from '../helpers/parcelEventsHelpers';
 
 export interface Warehouse {
     warehouseId: string;

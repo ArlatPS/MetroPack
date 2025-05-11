@@ -1,5 +1,6 @@
 import { DynamoDBDocumentClient, QueryCommand } from '@aws-sdk/lib-dynamodb';
 import { PutItemCommand, PutItemCommandInput } from '@aws-sdk/client-dynamodb';
+
 import { ParcelEvent } from '../aggregates/parcel';
 
 export async function getParcelEvents(parcelId: string, ddbDocClient: DynamoDBDocumentClient): Promise<ParcelEvent[]> {

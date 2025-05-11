@@ -172,34 +172,6 @@ export async function updateDeliveryJobStatus(
     await ddbDocClient.send(new UpdateCommand(updateParams));
 }
 
-// export async function getPickupJobByParcelId(
-//     parcelId: string,
-//     ddbDocClient: DynamoDBDocumentClient,
-// ): Promise<Job | null> {
-//     const pickupJobTable = process.env.PICKUP_JOB_TABLE;
-//
-//     if (!pickupJobTable) {
-//         throw new Error('Pickup job table is not set');
-//     }
-//
-//     const queryParams = {
-//         TableName: pickupJobTable,
-//         IndexName: 'ParcelIdIndex',
-//         KeyConditionExpression: 'parcelId = :parcelId',
-//         ExpressionAttributeValues: {
-//             ':parcelId': parcelId,
-//         },
-//     };
-//
-//     const queryResult = await ddbDocClient.send(new QueryCommand(queryParams));
-//
-//     if (!queryResult.Items || queryResult.Items.length === 0) {
-//         return null;
-//     }
-//
-//     return queryResult.Items[0] as Job;
-// }
-
 export async function getDeliveryJob(jobId: string, ddbDocClient: DynamoDBDocumentClient): Promise<Job | null> {
     const deliveryJobTable = process.env.DELIVERY_JOB_TABLE;
 

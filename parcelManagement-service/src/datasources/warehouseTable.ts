@@ -1,4 +1,5 @@
 import { DynamoDBDocumentClient, QueryCommand, ScanCommand } from '@aws-sdk/lib-dynamodb';
+
 import { Warehouse } from '../aggregates/parcel';
 
 export async function getWarehouse(

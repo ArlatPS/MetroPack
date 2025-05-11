@@ -28,7 +28,12 @@ export const handler = async (event: SQSEvent, context: Context): Promise<void> 
                     await eventGenerator.processDeliveryJob(jobCreatedEvent.detail.data.jobId);
                     break;
                 case 'transferJobCreated':
-                    await eventGenerator.processTransferJob(jobCreatedEvent.detail.data.jobId);
+                    const data = (jobCreatedEvent as TransferJobCreatedEvent).detail.data;
+                    await eventGenerator.processTransferJob(
+                        data.jobId,
+                        data.sourceWarehouseId,
+                        data.destinationWarehouseId,
+                    );
                     break;
                 default:
                     throw new Error(`Unknown job type: ${jobCreatedEvent.detail.metadata}`);

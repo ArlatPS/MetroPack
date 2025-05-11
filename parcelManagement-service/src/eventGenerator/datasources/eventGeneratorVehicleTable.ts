@@ -23,14 +23,14 @@ export async function getEventGeneratorVehicleIds(
     ddbDocClient: DynamoDBDocumentClient,
     lastEvaluatedKey?: string,
 ): Promise<{ vehicleIds: string[]; lastKey?: string }> {
-    const vehicleTable = process.env.VEHICLE_TABLE;
+    const eventGeneratorVehicleTable = process.env.EVENT_GENERATOR_VEHICLE_TABLE;
 
-    if (!vehicleTable) {
-        throw new Error('Vehicle table is not set');
+    if (!eventGeneratorVehicleTable) {
+        throw new Error('Event generator job table is not set');
     }
 
     const params = {
-        TableName: vehicleTable,
+        TableName: eventGeneratorVehicleTable,
         Limit: 20,
         ExclusiveStartKey: lastEvaluatedKey ? { vehicleId: lastEvaluatedKey } : undefined,
     };

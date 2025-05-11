@@ -27,7 +27,6 @@ async function makeRequest(
     body: object,
 ): Promise<{
     response: HttpResponse;
-    responseBody: any;
 }> {
     const apiId = process.env.API_GW_ID;
     const region = process.env.AWS_REGION || 'eu-central-1';
@@ -59,15 +58,7 @@ async function makeRequest(
     const signedRequest = await signer.sign(request);
     const { response } = await new NodeHttpHandler().handle(signedRequest as HttpRequest);
 
-    const responseBody = await new Promise<string>((resolve, reject) => {
-        let body = '';
-        response.body.on('data', (chunk: Buffer) => (body += chunk.toString()));
-        response.body.on('end', () => resolve(body));
-        response.body.on('error', reject);
-    });
-
     return {
         response,
-        responseBody: JSON.parse(responseBody),
     };
 }

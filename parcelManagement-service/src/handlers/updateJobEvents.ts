@@ -26,6 +26,7 @@ export const handler = async (event: JobEvents, context: Context): Promise<void>
             }
             case 'pickupJobCompleted': {
                 await parcelManagement.updatePickupJobStatus(event.detail.data.jobId, 'COMPLETED');
+                await parcelManagement.handlePickupJobCompleted(event.detail.data.jobId, event.detail.data.time);
                 break;
             }
             case 'deliveryJobStarted': {

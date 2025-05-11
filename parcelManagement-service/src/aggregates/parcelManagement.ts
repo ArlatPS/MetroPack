@@ -22,6 +22,7 @@ import {
     getAddDeliveryJobTransactItem,
     getAddPickupJobTransactItem,
     getDeliveryJob,
+    getPickupJob,
     getTransferJob,
     getTransferJobByConnection,
     Job,
@@ -35,7 +36,7 @@ import { Parcel, Warehouse } from './parcel';
 import { Location } from '../valueObjects/location';
 import { randomUUID } from 'node:crypto';
 import { getNextNight, getToday } from '../helpers/dateHelpers';
-import { putEvent, putEvents } from '../datasources/parcelManagementEventBridge';
+import { putEvents } from '../datasources/parcelManagementEventBridge';
 import {
     createDeliveryJobCreatedEvent,
     createPickupJobCreatedEvent,
@@ -44,6 +45,7 @@ import {
     createTransferJobCreatedEvent,
 } from '../helpers/jobEventsHelpers';
 import {
+    createParcelDeliveredToWarehouseEvent,
     createParcelDeliveryStartedEvent,
     createParcelTransferCompletedEvent,
     createParcelTransferStartedEvent,
@@ -292,6 +294,26 @@ export class ParcelManagement {
         await putEvents(deliveryJobStartedEvents);
     }
 
+    public async handlePickupJobCompleted(jobId: string, time: string): Promise<void> {
+        const pickupJob = await getPickupJob(jobId, this.ddbDocClient);
+
+        if (!pickupJob) {
+            throw new NotFoundError(`Pickup job ${jobId} not found`);
+        }
+
+        const warehouse = await getWarehouse(pickupJob.warehouseId, this.ddbDocClient);
+
+        if (!warehouse) {
+            throw new NotFoundError(`Warehouse ${pickupJob.warehouseId} not found`);
+        }
+
+        const parcelDeliveredToWarehouseEvents = pickupJob.steps.map(({ parcelId }) =>
+            createParcelDeliveredToWarehouseEvent(parcelId, pickupJob.vehicleId, time, warehouse, this.context),
+        );
+
+        await putEvents(parcelDeliveredToWarehouseEvents);
+    }
+
     public async resetVehicles(): Promise<void> {
         await resetVehiclesCapacity(this.ddbDocClient);
     }
@@ -352,7 +374,7 @@ export class ParcelManagement {
             };
 
             await addTransferJob(job, this.ddbDocClient);
-            await putEvent('transferJobCreated', createTransferJobCreatedEvent(job, this.context).detail);
+            await putEvents([createTransferJobCreatedEvent(job, this.context)]);
         }
     }
 

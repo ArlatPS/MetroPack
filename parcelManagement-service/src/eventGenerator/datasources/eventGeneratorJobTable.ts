@@ -7,7 +7,7 @@ import { Location } from '../../valueObjects/location';
 
 type EventGeneratorJobStatus = 'PENDING' | 'IN_PROGRESS';
 
-interface EventGeneratorJobStep extends Step {
+export interface EventGeneratorJobStep extends Step {
     done?: boolean;
 }
 export interface EventGeneratorTransitJob {
@@ -44,7 +44,6 @@ export async function putEventGeneratorJob(
     duration?: number,
     sourceWarehouseId?: string,
     destinationWarehouseId?: string,
-    parcelIds?: string[],
 ): Promise<void> {
     const eventGeneratorJobTable = process.env.EVENT_GENERATOR_JOB_TABLE;
 
@@ -66,7 +65,6 @@ export async function putEventGeneratorJob(
                 duration,
                 sourceWarehouseId,
                 destinationWarehouseId,
-                parcelIds,
             },
             {
                 removeUndefinedValues: true,

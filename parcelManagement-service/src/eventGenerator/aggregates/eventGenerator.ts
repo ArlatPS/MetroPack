@@ -1,9 +1,10 @@
 import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 import { Context } from 'aws-lambda';
-import { getDeliveryJob, getPickupJob, getTransferJob } from '../../datasources/jobsTables';
+import { getDeliveryJob, getPickupJob } from '../../datasources/jobsTables';
 import { NotFoundError } from '../../errors/NotFoundError';
 import {
     deleteEventGeneratorJob,
+    EventGeneratorJobStep,
     EventGeneratorTransferJob,
     EventGeneratorTransitJob,
     getEventGeneratorJobForVehicleWithStatus,
@@ -97,7 +98,7 @@ export class EventGenerator {
     }
 
     public async generateEventsForTransferJob(job: EventGeneratorTransferJob): Promise<void> {
-        if (job.status === 'PENDING') {
+        if (job.status === 'PENDING' && getHour() > 20) {
             await putEvents(
                 [
                     createTransferJobStartedEvent(
@@ -112,7 +113,7 @@ export class EventGenerator {
             );
             await updateEventGeneratorJobStatus(job.jobId, 'IN_PROGRESS', this.ddbDocClient);
             // if after 5 am or if after 4 am and dice roll passes
-        } else if (getHour() >= 5 || (getHour() === 4 && Math.random() > 0.7)) {
+        } else if (getHour() <= 6 && (getHour() >= 5 || (getHour() === 4 && Math.random() > 0.7))) {
             await putEvents(
                 [
                     createTransferJobCompletedEvent(
@@ -145,11 +146,11 @@ export class EventGenerator {
                 );
             }
             await upsertEventGeneratorTransitJob(
-                { ...job, status: 'IN_PROGRESS', started: Date.now() },
+                { ...job, status: 'IN_PROGRESS', started: Date.now() / 1000 },
                 this.ddbDocClient,
             );
         } else {
-            const lastDoneStepIndex = job.steps.findIndex((step) => !step.done) - 1;
+            const lastDoneStepIndex = this.getLastDoneIndex(job.steps);
             // if no steps are done, last step wast departure from warehouse
             const lastDoneStep = job.steps[lastDoneStepIndex] || {
                 location: job.location,
@@ -196,7 +197,7 @@ export class EventGenerator {
                 return;
             }
 
-            if (currentStep.arrivalTime > timeElapsed) {
+            if (timeElapsed > currentStep.arrivalTime) {
                 // pickup/delivery made now
                 if (job.type === 'PICKUP') {
                     await putEvents(
@@ -228,8 +229,21 @@ export class EventGenerator {
 
                 const location = new Location(currentStep.location.longitude, currentStep.location.latitude);
                 await this.updateVehicleLocation(job.vehicleId, job.jobId, location);
-            } else {
-                // pickup/delivery in progress
+
+                await upsertEventGeneratorTransitJob(
+                    {
+                        ...job,
+                        steps: job.steps.map((step) => {
+                            if (step.parcelId === currentStep.parcelId) {
+                                return { ...step, done: true };
+                            }
+                            return step;
+                        }),
+                    },
+                    this.ddbDocClient,
+                );
+            } else if (job.type === 'DELIVERY') {
+                // delivery in progress - upate vehicle location
                 const timeElapsedSinceLastDoneStep = now - (started + lastDoneStep.arrivalTime);
                 const progress = timeElapsedSinceLastDoneStep / (currentStep.arrivalTime - lastDoneStep.arrivalTime);
                 const lastDoneStepLocation = new Location(
@@ -303,16 +317,16 @@ export class EventGenerator {
         await putEventGeneratorVehicle(job.vehicleId, this.ddbDocClient);
     }
 
-    public async processTransferJob(jobId: string): Promise<void> {
-        const job = await getTransferJob(jobId, this.ddbDocClient);
-
-        if (!job) {
-            throw new NotFoundError(`Transfer job with ID ${jobId} not found`);
-        }
+    public async processTransferJob(
+        jobId: string,
+        sourceWarehouseId: string,
+        destinationWarehouseId: string,
+    ): Promise<void> {
+        const connection = `${sourceWarehouseId}-${destinationWarehouseId}`;
 
         await putEventGeneratorJob(
-            job.jobId,
-            job.connection,
+            jobId,
+            connection,
             'PENDING',
             'TRANSFER',
             this.ddbDocClient,
@@ -320,10 +334,18 @@ export class EventGenerator {
             undefined,
             undefined,
             undefined,
-            job.sourceWarehouseId,
-            job.destinationWarehouseId,
-            job.parcelIds,
+            sourceWarehouseId,
+            destinationWarehouseId,
         );
-        await putEventGeneratorVehicle(job.connection, this.ddbDocClient);
+        await putEventGeneratorVehicle(connection, this.ddbDocClient);
+    }
+
+    private getLastDoneIndex(array: EventGeneratorJobStep[]): number {
+        for (let i = array.length - 1; i >= 0; i--) {
+            if (array[i].done) {
+                return i;
+            }
+        }
+        return -1;
     }
 }

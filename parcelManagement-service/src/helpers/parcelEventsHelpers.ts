@@ -7,6 +7,7 @@ import {
     ParcelDeliveryStartedEvent,
     ParcelDeliveredEvent,
     ParcelPickedUpEvent,
+    ParcelDeliveredToWarehouseEvent,
 } from '../aggregates/parcel';
 import { Location } from '../valueObjects/location';
 import { randomUUID } from 'node:crypto';
@@ -214,6 +215,40 @@ export function createParcelDeliveryCompletedEvent(
                 vehicleId,
                 time,
                 deliveryLocation,
+            },
+        },
+    };
+}
+
+export function createParcelDeliveredToWarehouseEvent(
+    parcelId: string,
+    vehicleId: string,
+    time: string,
+    warehouse: Warehouse,
+    context: Context,
+): ParcelDeliveredToWarehouseEvent {
+    return {
+        version: '1',
+        id: randomUUID(),
+        detailType: 'parcelManagementService.parcelDeliveredToWarehouse',
+        source: context.functionName,
+        time: new Date().toISOString(),
+        region: process.env.AWS_REGION || 'eu-central-1',
+        resources: [context.invokedFunctionArn],
+        detail: {
+            metadata: {
+                domain: 'parcelShipping',
+                subdomain: 'parcelManagement',
+                service: 'parcelManagementService',
+                category: 'domainEvent',
+                type: 'data',
+                name: 'parcelDeliveredToWarehouse',
+            },
+            data: {
+                parcelId,
+                vehicleId,
+                time,
+                warehouse,
             },
         },
     };

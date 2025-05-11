@@ -375,6 +375,8 @@ Resources:
             TableName: !Ref PickupJobTable
         - DynamoDBCrudPolicy:
             TableName: !Ref DeliveryJobTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref WarehouseTable
         - Statement:
             - Effect: Allow
               Action: events:PutEvents
@@ -384,6 +386,7 @@ Resources:
           PICKUP_JOB_TABLE: !Ref PickupJobTable
           DELIVERY_JOB_TABLE: !Ref DeliveryJobTable
           EVENT_BUS_NAME: !Ref EventBus
+          WAREHOUSE_TABLE: !Ref WarehouseTable
     Metadata:
       BuildMethod: esbuild
       BuildProperties:
@@ -989,9 +992,15 @@ Resources:
             TableName: !Ref EventGeneratorVehicleTable
         - DynamoDBReadPolicy:
             TableName: !Ref WarehouseTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref PickupJobTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref DeliveryJobTable
       Environment:
         Variables:
           EVENT_GENERATOR_JOB_TABLE: !Ref EventGeneratorJobTable
+          PICKUP_JOB_TABLE: !Ref PickupJobTable
+          DELIVERY_JOB_TABLE: !Ref DeliveryJobTable
           EVENT_GENERATOR_VEHICLE_TABLE: !Ref EventGeneratorVehicleTable
           WAREHOUSE_TABLE: !Ref WarehouseTable
     Metadata:
@@ -1033,7 +1042,7 @@ Resources:
         Variables:
           EVENT_GENERATOR_JOB_TABLE: !Ref EventGeneratorJobTable
           EVENT_GENERATOR_VEHICLE_TABLE: !Ref EventGeneratorVehicleTable
-          API_GW_ID: !GetAtt ApiGateway.RootResourceId
+          API_GW_ID: !Ref ApiGateway
           EVENT_BUS_NAME: !Ref EventBus
     Metadata:
       BuildMethod: esbuild
@@ -1041,7 +1050,6 @@ Resources:
         Minify: true
         Target: es2020
         Sourcemap: true
-
 
   EventGeneratorVehicleTable:
     Type: AWS::DynamoDB::Table

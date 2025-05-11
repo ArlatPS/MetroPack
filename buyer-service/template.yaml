@@ -1,0 +1,32 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: BuyerService
+
+Transform:
+  - AWS::Serverless-2016-10-31
+
+Parameters:
+  DynamicPricingApiId:
+    Type: String
+    Description: The API ID of the Dynamic Pricing API
+  BillingApiId:
+    Type: String
+    Description: The API ID of the Billing API
+  ParcelManagementApiId:
+    Type: String
+    Description: The API ID of the Parcel Management API
+
+Resources:
+  ApiGateway:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: BuyerServiceApi
+      StageName: prod
+
+Outputs:
+  ApiEndpoint:
+    Description: API Gateway endpoint URL
+    Value: !Sub "https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/prod"
+Globals:
+  Function:
+    LoggingConfig:
+      LogFormat: JSON

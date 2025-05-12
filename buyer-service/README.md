@@ -1,4 +1,4 @@
-# ParcelManagement Service
+# Buyer Service
 
 ### Commands
 ```bash 

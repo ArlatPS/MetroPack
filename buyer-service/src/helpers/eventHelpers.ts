@@ -4,7 +4,7 @@ import { Context } from 'node:vm';
 interface EventBase {
     version: '1';
     id: string;
-    detailType: string;
+    'detail-type': string;
     source: string;
     time: string;
     region: string;
@@ -85,7 +85,7 @@ export function createOfferAcceptedEvent(offerId: string, context: Context): Off
     return {
         version: '1',
         id: randomUUID(),
-        detailType: 'dynamicPricing.offerAccepted',
+        'detail-type': 'dynamicPricing.offerAccepted',
         source: context.functionName,
         time: new Date().toISOString(),
         region: process.env.AWS_REGION || 'eu-central-1',
@@ -110,7 +110,7 @@ export function createOfferAcceptCancelledEvent(offerId: string, context: Contex
     return {
         version: '1',
         id: randomUUID(),
-        detailType: 'dynamicPricing.offerAcceptCancelled',
+        'detail-type': 'dynamicPricing.offerAcceptCancelled',
         source: context.functionName,
         time: new Date().toISOString(),
         region: process.env.AWS_REGION || 'eu-central-1',
@@ -141,7 +141,7 @@ export function createOrderCreatedEvent(
     return {
         version: '1',
         id: randomUUID(),
-        detailType: 'vendorService.orderCreated',
+        'detail-type': 'vendorService.orderCreated',
         source: context.functionName,
         time: new Date().toISOString(),
         region: process.env.AWS_REGION || 'eu-central-1',
@@ -175,7 +175,7 @@ export function createOrderCreationCancelledEvent(
     return {
         version: '1',
         id: randomUUID(),
-        detailType: 'vendorService.orderCreationCancelled',
+        'detail-type': 'vendorService.orderCreationCancelled',
         source: context.functionName,
         time: new Date().toISOString(),
         region: process.env.AWS_REGION || 'eu-central-1',

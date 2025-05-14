@@ -22,6 +22,101 @@ Resources:
       Name: BuyerServiceApi
       StageName: prod
 
+  GetBuyerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/getBuyer.handler
+      Runtime: nodejs22.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 5
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref BuyerTable
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Path: /buyer/{email}
+            Method: GET
+            RestApiId: !Ref ApiGateway
+      Environment:
+        Variables:
+          BUYER_TABLE: !Ref BuyerTable
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+
+  AcceptOfferFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/acceptOffer.handler
+      Runtime: nodejs22.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 20
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref BuyerTable
+        - Statement:
+            - Effect: Allow
+              Action:
+                - execute-api:Invoke
+              Resource: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${DynamicPricingApiId}/*/*/putEvent
+        - Statement:
+            - Effect: Allow
+              Action:
+                - execute-api:Invoke
+              Resource: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${DynamicPricingApiId}/*/*/getOffer/*
+        - Statement:
+            - Effect: Allow
+              Action:
+                - execute-api:Invoke
+              Resource: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${BillingApiId}/*/*/putEvent
+        - Statement:
+            - Effect: Allow
+              Action:
+                - execute-api:Invoke
+              Resource: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ParcelManagementApiId}/*/*/parcel/register
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Path: /acceptOffer
+            Method: POST
+            RestApiId: !Ref ApiGateway
+      Environment:
+        Variables:
+          BUYER_TABLE: !Ref BuyerTable
+          DYNAMIC_PRICING_API_ID: !Ref DynamicPricingApiId
+          BILLING_API_ID: !Ref BillingApiId
+          PARCEL_MANAGEMENT_API_ID: !Ref ParcelManagementApiId
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+
+  BuyerTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: BuyerTable
+      AttributeDefinitions:
+        - AttributeName: email
+          AttributeType: S
+      KeySchema:
+        - AttributeName: email
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+
 Outputs:
   ApiEndpoint:
     Description: API Gateway endpoint URL

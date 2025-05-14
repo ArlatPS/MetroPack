@@ -77,18 +77,22 @@ export class AcceptOfferSaga {
 
     private async sendOfferAcceptedEvent(offerId: string): Promise<void> {
         await putOfferAcceptedEvent(offerId, this.context);
+        console.log('sent offer accepted event');
     }
 
     private async sendOfferAcceptCancelledEvent(offerId: string): Promise<void> {
         await putOfferAcceptCancelledEvent(offerId, this.context);
+        console.log('sent offer accept cancelled event');
     }
 
     private async sendOrderCreatedEvent(vendorId: string, orderId: string, offerId: string): Promise<void> {
         await putOrderCreatedEvent(vendorId, orderId, new Date().toISOString(), offerId, this.context);
+        console.log('sent order created event');
     }
 
     private async sendOrderCreationCancelledEvent(vendorId: string, orderId: string, offerId: string): Promise<void> {
         await putOrderCreationCancelledEvent(vendorId, orderId, new Date().toISOString(), offerId, this.context);
+        console.log('sent order creation cancelled event');
     }
 
     private async addParcelToBuyer(email: string, parcelId: string): Promise<void> {
@@ -99,10 +103,12 @@ export class AcceptOfferSaga {
         } else {
             await addParcelToBuyer(email, parcelId, this.ddbDocClient);
         }
+        console.log('added parcel to buyer');
     }
 
     private async removeParcelFromBuyer(email: string, parcelId: string): Promise<void> {
         await removeParcelFromBuyer(email, parcelId, this.ddbDocClient);
+        console.log('removed parcel from buyer');
     }
 
     private async registerParcel(
@@ -112,5 +118,6 @@ export class AcceptOfferSaga {
         deliveryLocation: { longitude: number; latitude: number },
     ): Promise<void> {
         await registerParcel(parcelId, offer.pickupDate, pickupLocation, offer.deliveryDate, deliveryLocation);
+        console.log('registered parcel');
     }
 }

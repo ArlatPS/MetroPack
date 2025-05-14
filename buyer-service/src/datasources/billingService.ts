@@ -9,11 +9,11 @@ export async function putOrderCreatedEvent(
     offerId: string,
     context: Context,
 ): Promise<void> {
-    const apiId = process.env.BILLING_SERVICE_API_ID;
+    const apiId = process.env.BILLING_API_ID;
     const region = process.env.AWS_REGION || 'eu-central-1';
 
     if (!apiId) {
-        throw new Error('BILLING_SERVICE_API_ID environment variable is not set');
+        throw new Error('BILLING_API_ID environment variable is not set');
     }
 
     const endpoint = `https://${apiId}.execute-api.${region}.amazonaws.com/prod/putEvent`;
@@ -36,11 +36,11 @@ export async function putOrderCreationCancelledEvent(
     offerId: string,
     context: Context,
 ): Promise<void> {
-    const apiId = process.env.BILLING_SERVICE_API_ID;
+    const apiId = process.env.BILLING_API_ID;
     const region = process.env.AWS_REGION || 'eu-central-1';
 
     if (!apiId) {
-        throw new Error('BILLING_SERVICE_API_ID environment variable is not set');
+        throw new Error('BILLING_API_ID environment variable is not set');
     }
 
     const endpoint = `https://${apiId}.execute-api.${region}.amazonaws.com/prod/putEvent`;

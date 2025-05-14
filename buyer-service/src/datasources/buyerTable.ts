@@ -1,5 +1,4 @@
 import { DynamoDBDocumentClient, PutCommand, QueryCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
-import { marshall } from '@aws-sdk/util-dynamodb';
 
 interface Buyer {
     email: string;
@@ -35,10 +34,10 @@ export async function addBuyer(email: string, parcelId: string, ddbDocClient: Dy
 
     const params = {
         TableName: buyerTable,
-        Item: marshall({
+        Item: {
             email: email,
             parcelsIds: [parcelId],
-        }),
+        },
         ConditionExpression: 'attribute_not_exists(email)',
     };
 

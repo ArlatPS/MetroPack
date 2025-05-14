@@ -39,6 +39,7 @@ export async function addBuyer(email: string, parcelId: string, ddbDocClient: Dy
             email: email,
             parcelsIds: [parcelId],
         }),
+        ConditionExpression: 'attribute_not_exists(email)',
     };
 
     await ddbDocClient.send(new PutCommand(params));
@@ -67,5 +68,37 @@ export async function addParcelToBuyer(
         },
     };
 
+    await ddbDocClient.send(new UpdateCommand(updateParams));
+}
+
+export async function removeParcelFromBuyer(
+    email: string,
+    parcelId: string,
+    ddbDocClient: DynamoDBDocumentClient,
+): Promise<void> {
+    const buyerTable = process.env.BUYER_TABLE;
+
+    if (!buyerTable) {
+        throw new Error('Buyer table is not set');
+    }
+
+    const buyer = await getBuyer(email, ddbDocClient);
+
+    if (!buyer) {
+        throw new Error('Buyer not found');
+    }
+
+    const parcelsIds = buyer.parcelsIds.filter((id) => id !== parcelId);
+
+    const updateParams = {
+        TableName: buyerTable,
+        Key: {
+            email: email,
+        },
+        UpdateExpression: 'SET parcelIds = :parcelIds',
+        ExpressionAttributeValues: {
+            ':parcelIds': parcelsIds,
+        },
+    };
     await ddbDocClient.send(new UpdateCommand(updateParams));
 }

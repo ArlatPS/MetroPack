@@ -29,6 +29,7 @@ export const handler = async (event: APIGatewayProxyEvent, context: Context): Pr
             new Location(body.pickupLocation.longitude, body.pickupLocation.latitude),
             body.deliveryDate,
             new Location(body.deliveryLocation.longitude, body.deliveryLocation.latitude),
+            body.parcelId,
         );
     } catch (err) {
         console.error(err);

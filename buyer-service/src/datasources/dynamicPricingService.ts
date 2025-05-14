@@ -1,8 +1,8 @@
 import { makeRequest } from '../helpers/requestHelpers';
 import { Context } from 'node:vm';
-import { createOfferAcceptedEvent } from '../helpers/eventHelpers';
+import { createOfferAcceptCancelledEvent, createOfferAcceptedEvent } from '../helpers/eventHelpers';
 
-interface Offer {
+export interface Offer {
     offerId: string;
     pickupCityCodename: string;
     pickupDate: string;
@@ -11,7 +11,7 @@ interface Offer {
     price: number;
 }
 
-export async function getOffer(offerId: string): Promise<Offer> {
+export async function getOffer(offerId: string): Promise<Offer | null> {
     const apiId = process.env.DYNAMIC_PRICING_API_ID;
     const region = process.env.AWS_REGION || 'eu-central-1';
 
@@ -25,7 +25,7 @@ export async function getOffer(offerId: string): Promise<Offer> {
     try {
         const response = await makeRequest(endpoint, 'GET');
 
-        return response as Offer;
+        return response as Offer | null;
     } catch (e) {
         throw new Error('Failed to fetch offer: ' + e);
     }
@@ -45,5 +45,22 @@ export async function putOfferAcceptedEvent(offerId: string, context: Context): 
         await makeRequest(endpoint, 'POST', JSON.stringify(createOfferAcceptedEvent(offerId, context)));
     } catch (e) {
         throw new Error('Failed to put offer accepted event: ' + e);
+    }
+}
+
+export async function putOfferAcceptCancelledEvent(offerId: string, context: Context): Promise<void> {
+    const apiId = process.env.DYNAMIC_PRICING_API_ID;
+    const region = process.env.AWS_REGION || 'eu-central-1';
+
+    if (!apiId) {
+        throw new Error('DYNAMIC_PRICING_API_ID environment variable is not set');
+    }
+
+    const endpoint = `https://${apiId}.execute-api.${region}.amazonaws.com/prod/putEvent`;
+
+    try {
+        await makeRequest(endpoint, 'POST', JSON.stringify(createOfferAcceptCancelledEvent(offerId, context)));
+    } catch (e) {
+        throw new Error('Failed to put offer accept cancelled event: ' + e);
     }
 }

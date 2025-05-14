@@ -19,6 +19,7 @@ export function createParcelRegisteredEvent(
     deliveryLocation: Location,
     transitWarehouses: Warehouse[],
     context: Context,
+    parcelId: string = randomUUID(),
 ): ParcelRegisteredEvent {
     return {
         version: '1',
@@ -38,7 +39,7 @@ export function createParcelRegisteredEvent(
                 name: 'parcelRegistered',
             },
             data: {
-                parcelId: randomUUID(),
+                parcelId,
                 time: new Date().toISOString(),
                 pickupDate,
                 pickupLocation,

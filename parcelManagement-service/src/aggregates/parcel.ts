@@ -199,6 +199,7 @@ export class Parcel {
         pickupLocation: Location,
         deliveryDate: string,
         deliveryLocation: Location,
+        parcelId?: string,
     ): Promise<void> {
         const warehouses = await gatAvailableWarehouses(this.ddbDocClient);
         if (warehouses.length === 0) {
@@ -250,6 +251,7 @@ export class Parcel {
                 deliveryLocation,
                 transitWarehouses,
                 this.context,
+                parcelId,
             ),
         );
     }

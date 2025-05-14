@@ -1,6 +1,7 @@
 import { makeRequest } from '../helpers/requestHelpers';
 
 export async function registerParcel(
+    parcelId: string,
     pickupDate: string,
     pickupLocation: { longitude: number; latitude: number },
     deliveryDate: string,
@@ -20,6 +21,7 @@ export async function registerParcel(
             endpoint,
             'POST',
             JSON.stringify({
+                parcelId,
                 pickupDate,
                 pickupLocation,
                 deliveryDate,

@@ -37,7 +37,7 @@ export async function putOffer(
             pickupDate: { S: offer.pickupDate },
             deliveryCityCodename: { S: offer.deliveryCityCodename },
             deliveryDate: { S: offer.deliveryDate },
-            price: { N: offer.price.toString() },
+            price: { N: offer.price.toFixed(2) },
             ttl: { N: (Math.round(Date.now() / 1000) + 60 * 60 * 24).toString() },
         },
     };

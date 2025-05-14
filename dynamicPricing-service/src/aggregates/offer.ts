@@ -148,8 +148,22 @@ export class Offer {
         basePrice: number,
     ): number {
         const ratio = currentCapacity / maxCapacity;
-        const priceFactor = 1 + (1 - ratio) * multiplier;
 
-        return Math.ceil(basePrice * priceFactor * 100) / 100; // TOOD use value type
+        let priceFactor: number;
+        if (ratio >= 0.5) {
+            // Price increases as the ratio approaches 0.5
+            priceFactor = 1 + (1 - ratio) * multiplier;
+        } else if (ratio >= 0.1) {
+            const previousStepFactor = 1 + 0.5 * multiplier;
+            // Price increases sharply as the ratio approaches 0.1
+            priceFactor = (1 - ratio - 0.5) * multiplier * 2 + previousStepFactor;
+        } else {
+            // Price sharply decreases beyond a ratio of 0.1
+            const previousStepFactor = 1 + 0.5 * multiplier + 0.4 * multiplier * 2;
+
+            priceFactor = previousStepFactor - ratio * multiplier * 5;
+        }
+
+        return Math.ceil(basePrice * priceFactor * 100) / 100;
     }
 }

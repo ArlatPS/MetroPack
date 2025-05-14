@@ -47,8 +47,8 @@ interface OrderCreatedEvent extends EventBase {
     detail: {
         metadata: {
             domain: 'customerService';
-            subdomain: 'vendor';
-            service: 'vendorService';
+            subdomain: 'buyer';
+            service: 'buyerService';
             category: 'domainEvent';
             type: 'data';
             name: 'orderCreated';
@@ -66,8 +66,8 @@ interface OrderCreationCancelledEvent extends EventBase {
     detail: {
         metadata: {
             domain: 'customerService';
-            subdomain: 'vendor';
-            service: 'vendorService';
+            subdomain: 'buyer';
+            service: 'buyerService';
             category: 'domainEvent';
             type: 'data';
             name: 'orderCreationCancelled';
@@ -141,7 +141,7 @@ export function createOrderCreatedEvent(
     return {
         version: '1',
         id: randomUUID(),
-        'detail-type': 'vendorService.orderCreated',
+        'detail-type': 'buyerService.orderCreated',
         source: context.functionName,
         time: new Date().toISOString(),
         region: process.env.AWS_REGION || 'eu-central-1',
@@ -149,8 +149,8 @@ export function createOrderCreatedEvent(
         detail: {
             metadata: {
                 domain: 'customerService',
-                subdomain: 'vendor',
-                service: 'vendorService',
+                subdomain: 'buyer',
+                service: 'buyerService',
                 category: 'domainEvent',
                 type: 'data',
                 name: 'orderCreated',
@@ -175,7 +175,7 @@ export function createOrderCreationCancelledEvent(
     return {
         version: '1',
         id: randomUUID(),
-        'detail-type': 'vendorService.orderCreationCancelled',
+        'detail-type': 'buyerService.orderCreationCancelled',
         source: context.functionName,
         time: new Date().toISOString(),
         region: process.env.AWS_REGION || 'eu-central-1',
@@ -183,8 +183,8 @@ export function createOrderCreationCancelledEvent(
         detail: {
             metadata: {
                 domain: 'customerService',
-                subdomain: 'vendor',
-                service: 'vendorService',
+                subdomain: 'buyer',
+                service: 'buyerService',
                 category: 'domainEvent',
                 type: 'data',
                 name: 'orderCreationCancelled',

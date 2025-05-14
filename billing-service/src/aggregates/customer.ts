@@ -1,12 +1,19 @@
 import { DynamoDBDocumentClient, TransactWriteCommand } from '@aws-sdk/lib-dynamodb';
 import { getOffer } from '../datasources/dynamicPricingService';
-import { getAddOrderTransactItem, getOrder, getOrders, Order, updateOrderStatus } from '../datasources/orderTable';
+import {
+    getAddOrderTransactItem,
+    getOrder,
+    getOrders,
+    getRemoveOrderTransactItem,
+    Order,
+} from '../datasources/orderTable';
 import {
     Bill,
     createBill,
     getAddOrderToBillTransactItem,
     getBill,
     getBills,
+    getRemoveOrderFromBillTransactItem,
     updateAmountPaid,
 } from '../datasources/billTable';
 import { Month } from '../valueObjects';
@@ -56,7 +63,6 @@ export class Customer {
             orderId,
             date,
             price: offer.price,
-            completed: false,
         };
 
         if (!(await this.getBill(customerId, month))) {
@@ -78,8 +84,32 @@ export class Customer {
         );
     }
 
-    public async markOrderAsCompleted(orderId: string): Promise<void> {
-        await updateOrderStatus(orderId, true, this.ddbDocClient);
+    public async removeOrder(customerId: string, orderId: string): Promise<void> {
+        const order = await getOrder(orderId, this.ddbDocClient);
+
+        if (!order) {
+            throw new Error(`Order with ID ${orderId} not found`);
+        }
+
+        const month = new Month(order.date).toString();
+
+        const bill = await getBill(customerId, month, this.ddbDocClient);
+
+        if (!bill) {
+            throw new Error(`Bill for customer ${customerId} in month ${month} not found`);
+        }
+
+        const removeOrderTransactItem = getRemoveOrderTransactItem(orderId);
+        const updateBillTransactItem = getRemoveOrderFromBillTransactItem(
+            customerId,
+            month,
+            order.price,
+            bill.orders.filter((id) => id !== orderId),
+        );
+
+        await this.ddbDocClient.send(
+            new TransactWriteCommand({ TransactItems: [removeOrderTransactItem, updateBillTransactItem] }),
+        );
     }
 
     public async payBill(customerId: string, month: string, amount: number): Promise<void> {

@@ -17,7 +17,7 @@ interface OrderCreatedEvent {
 }
 
 export const handler = async (
-    event: EventBridgeEvent<'vendorService.orderCreated', OrderCreatedEvent>,
+    event: EventBridgeEvent<'buyerService.orderCreated', OrderCreatedEvent>,
 ): Promise<void> => {
     const { vendorId, orderId, date, offerId } = event.detail.data;
 

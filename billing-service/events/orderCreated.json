@@ -1,7 +1,7 @@
 {
   "version": "1",
   "id": "12345678-1234-1234-1234-123456789012",
-  "detail-type": "vendorService.orderCreated",
+  "detail-type": "buyerService.orderCreated",
   "source": "lambdaName",
   "time": "2022-01-01T00:00:00Z",
   "region": "eu-central-1",
@@ -11,8 +11,8 @@
   "detail": {
     "metadata": {
       "domain": "customerService",
-      "subdomain": "vendor",
-      "service": "vendorService",
+      "subdomain": "buyer",
+      "service": "buyerService",
       "category": "domainEvent",
       "type": "data",
       "name": "orderCreated"

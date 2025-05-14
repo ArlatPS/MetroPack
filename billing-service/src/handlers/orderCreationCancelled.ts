@@ -10,13 +10,14 @@ const ddbDocClient = DynamoDBDocumentClient.from(client);
 interface OrderCompletedEvent {
     data: {
         orderId: string;
+        vendorId: string;
     };
 }
 
 export const handler = async (
-    event: EventBridgeEvent<'vendorService.orderCompleted', OrderCompletedEvent>,
+    event: EventBridgeEvent<'buyerService.orderCreationCancelled', OrderCompletedEvent>,
 ): Promise<void> => {
-    const { orderId } = event.detail.data;
+    const { orderId, vendorId } = event.detail.data;
 
     if (!orderId) {
         throw new Error(`Invalid event data ${JSON.stringify(event)}`);
@@ -24,5 +25,5 @@ export const handler = async (
 
     const customer = new Customer(ddbDocClient);
 
-    await customer.markOrderAsCompleted(orderId);
+    await customer.removeOrder(vendorId, orderId);
 };

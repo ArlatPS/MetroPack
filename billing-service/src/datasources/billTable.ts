@@ -69,6 +69,34 @@ export function getAddOrderToBillTransactItem(customerId: string, month: string,
     };
 }
 
+export function getRemoveOrderFromBillTransactItem(
+    customerId: string,
+    month: string,
+    price: number,
+    newOrders: string[],
+) {
+    const billTable = process.env.BILL_TABLE;
+
+    if (!billTable) {
+        throw new Error('Bill table is not set');
+    }
+
+    return {
+        Update: {
+            TableName: billTable,
+            Key: {
+                customerId: customerId,
+                month: month,
+            },
+            UpdateExpression: `SET totalPrice = totalPrice - :val, orders = :orders`,
+            ExpressionAttributeValues: {
+                ':val': price,
+                ':orders': newOrders,
+            },
+        },
+    };
+}
+
 export async function createBill(bill: Bill, ddbDocClient: DynamoDBDocumentClient): Promise<void> {
     const billTable = process.env.BILL_TABLE;
 

@@ -179,6 +179,34 @@ Resources:
         AttributeName: ttl
         Enabled: true
 
+
+  GenerateCityCapacityFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/generateCityCapacity.handler
+      Runtime: nodejs22.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 300
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref CityTable
+      Environment:
+        Variables:
+          CITY_TABLE: !Ref CityTable
+      Events:
+        ScheduleEvent:
+          Type: Schedule
+          Properties:
+            Schedule: cron(0 0 * * ? *)
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+
 Outputs:
   ApiEndpoint:
     Description: API Gateway endpoint URL

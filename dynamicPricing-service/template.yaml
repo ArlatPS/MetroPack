@@ -120,6 +120,10 @@ Resources:
       Timeout: 15
       Policies:
         - AWSLambdaBasicExecutionRole
+        - DynamoDBReadPolicy:
+            TableName: !Ref OfferTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref CityTable
       Events:
         OfferAcceptedRule:
           Type: EventBridgeRule
@@ -127,7 +131,12 @@ Resources:
             EventBusName: !Ref EventBus
             Pattern:
               detail-type:
-                - 'dynamicPricingService.offerAccepted'
+                - 'buyerService.offerAccepted'
+                - 'buyerService.offerAcceptCancelled'
+      Environment:
+        Variables:
+          CITY_TABLE: !Ref CityTable
+          OFFER_TABLE: !Ref OfferTable
     Metadata:
       BuildMethod: esbuild
       BuildProperties:

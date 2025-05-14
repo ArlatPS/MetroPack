@@ -1,4 +1,4 @@
-import { DynamoDBDocumentClient, QueryCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, QueryCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import { getNextWorkingDays } from '../helpers/dateHelpers';
 
 interface City {
@@ -56,4 +56,31 @@ export async function getCity(cityCodename: string, ddbDocClient: DynamoDBDocume
             return acc;
         }, {} as City['dates']),
     } as City;
+}
+
+export async function updateCityCapacity(
+    cityCodename: string,
+    date: string,
+    type: 'Pickup' | 'Delivery',
+    operation: 'increase' | 'decrease',
+    ddbDocClient: DynamoDBDocumentClient,
+): Promise<void> {
+    const cityTable = process.env.CITY_TABLE;
+    if (!cityTable) throw new Error('City table is not set');
+
+    const value = operation === 'increase' ? 1 : -1;
+
+    const params = {
+        TableName: cityTable,
+        Key: {
+            cityCodename,
+            date,
+        },
+        UpdateExpression: `SET current${type}Capacity = current${type}Capacity + :val`,
+        ExpressionAttributeValues: {
+            ':val': value,
+        },
+    };
+
+    await ddbDocClient.send(new UpdateCommand(params));
 }

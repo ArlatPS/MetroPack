@@ -1,6 +1,6 @@
 import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
-import { getCity } from '../datasources/cityTable';
-import * as offerTable from '../datasources/offerTable';
+import { getCity, updateCityCapacity } from '../datasources/cityTable';
+import { getOffer, putOffer } from '../datasources/offerTable';
 import { parseDate } from '../helpers/dateHelpers';
 import { OfferDetails, OfferWithDetails } from '../datasources/offerTable';
 
@@ -18,17 +18,10 @@ export class Offer {
     }
 
     public async getOfferById(offerId: string): Promise<OfferWithDetails | null> {
-        return offerTable.getOffer(offerId, this.ddbDocClient);
+        return getOffer(offerId, this.ddbDocClient);
     }
 
-    public async createOffer(
-        pickupCityCodename: string,
-        pickupLatitude: number,
-        pickupLongitude: number,
-        deliveryCityCodename: string,
-        deliveryLatitude: number,
-        deliveryLongitude: number,
-    ): Promise<OfferWithDetails[]> {
+    public async createOffer(pickupCityCodename: string, deliveryCityCodename: string): Promise<OfferWithDetails[]> {
         const bestPossibleOffers = this.getBestPrices(
             await this.getPossibleOffers(pickupCityCodename, deliveryCityCodename),
         );
@@ -41,8 +34,36 @@ export class Offer {
         );
     }
 
+    public async handleOfferAccepted(offerId: string): Promise<void> {
+        const offer = await this.getOfferById(offerId);
+        if (!offer) throw new Error(`Offer with ID ${offerId} not found`);
+
+        await updateCityCapacity(offer.pickupCityCodename, offer.pickupDate, 'Pickup', 'decrease', this.ddbDocClient);
+        await updateCityCapacity(
+            offer.deliveryCityCodename,
+            offer.deliveryDate,
+            'Delivery',
+            'decrease',
+            this.ddbDocClient,
+        );
+    }
+
+    public async handleOfferAcceptCancelled(offerId: string): Promise<void> {
+        const offer = await this.getOfferById(offerId);
+        if (!offer) throw new Error(`Offer with ID ${offerId} not found`);
+
+        await updateCityCapacity(offer.pickupCityCodename, offer.pickupDate, 'Pickup', 'increase', this.ddbDocClient);
+        await updateCityCapacity(
+            offer.deliveryCityCodename,
+            offer.deliveryDate,
+            'Delivery',
+            'increase',
+            this.ddbDocClient,
+        );
+    }
+
     private async saveOffer(offerDetails: OfferDetails): Promise<OfferWithDetails> {
-        return await offerTable.putOffer(offerDetails, this.ddbDocClient);
+        return await putOffer(offerDetails, this.ddbDocClient);
     }
 
     private createOfferDetails(

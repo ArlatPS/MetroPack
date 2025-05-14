@@ -14,9 +14,9 @@ interface EventBase {
 interface OfferAcceptedEvent extends EventBase {
     detail: {
         metadata: {
-            domain: 'finance';
-            subdomain: 'dynamicPricing';
-            service: 'dynamicPricingService';
+            domain: 'customerService';
+            subdomain: 'buyer';
+            service: 'buyerService';
             category: 'domainEvent';
             type: 'data';
             name: 'offerAccepted';
@@ -30,9 +30,9 @@ interface OfferAcceptedEvent extends EventBase {
 interface OfferAcceptCancelled extends EventBase {
     detail: {
         metadata: {
-            domain: 'finance';
-            subdomain: 'dynamicPricing';
-            service: 'dynamicPricingService';
+            domain: 'customerService';
+            subdomain: 'buyer';
+            service: 'buyerService';
             category: 'domainEvent';
             type: 'data';
             name: 'offerAcceptCancelled';
@@ -85,16 +85,16 @@ export function createOfferAcceptedEvent(offerId: string, context: Context): Off
     return {
         version: '1',
         id: randomUUID(),
-        'detail-type': 'dynamicPricing.offerAccepted',
+        'detail-type': 'buyerService.offerAccepted',
         source: context.functionName,
         time: new Date().toISOString(),
         region: process.env.AWS_REGION || 'eu-central-1',
         resources: [context.invokedFunctionArn],
         detail: {
             metadata: {
-                domain: 'finance',
-                subdomain: 'dynamicPricing',
-                service: 'dynamicPricingService',
+                domain: 'customerService',
+                subdomain: 'buyer',
+                service: 'buyerService',
                 category: 'domainEvent',
                 type: 'data',
                 name: 'offerAccepted',
@@ -110,16 +110,16 @@ export function createOfferAcceptCancelledEvent(offerId: string, context: Contex
     return {
         version: '1',
         id: randomUUID(),
-        'detail-type': 'dynamicPricing.offerAcceptCancelled',
+        'detail-type': 'buyerService.offerAcceptCancelled',
         source: context.functionName,
         time: new Date().toISOString(),
         region: process.env.AWS_REGION || 'eu-central-1',
         resources: [context.invokedFunctionArn],
         detail: {
             metadata: {
-                domain: 'finance',
-                subdomain: 'dynamicPricing',
-                service: 'dynamicPricingService',
+                domain: 'customerService',
+                subdomain: 'buyer',
+                service: 'buyerService',
                 category: 'domainEvent',
                 type: 'data',
                 name: 'offerAcceptCancelled',

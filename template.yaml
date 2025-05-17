@@ -1,0 +1,50 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: MetroPack
+Transform:
+  - AWS::Serverless-2016-10-31
+
+Parameters:
+  OrsKey:
+    Type: String
+    Description: The API key for ors
+
+Resources:
+  VendorServiceStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: vendor-service/template.yaml
+
+  RoutingServiceStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: routing-service/template.yaml
+      Parameters:
+        OrsKey: !Ref OrsKey
+
+  ParcelManagementServiceStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: parcelManagement-service/template.yaml
+      Parameters:
+        RoutingServiceApiId: !GetAtt RoutingServiceStack.Outputs.RoutingServiceApiId
+
+  DynamicPricingServiceStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: dynamicPricing-service/template.yaml
+
+  BillingServiceStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: billing-service/template.yaml
+      Parameters:
+        DynamicPricingApiId: !GetAtt DynamicPricingServiceStack.Outputs.DynamicPricingServiceApiId
+
+  BuyerServiceStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: buyer-service/template.yaml
+      Parameters:
+        DynamicPricingApiId: !GetAtt DynamicPricingServiceStack.Outputs.DynamicPricingServiceApiId
+        BillingApiId: !GetAtt BillingServiceStack.Outputs.BillingServiceApiId
+        ParcelManagementApiId: !GetAtt ParcelManagementServiceStack.Outputs.ParcelManagementServiceApiId

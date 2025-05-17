@@ -10,6 +10,12 @@ Parameters:
     Description: The API key for ors
 
 Resources:
+  ApiGateway:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: RoutingServiceApi
+      StageName: prod
+
   CreateDeliveryJobsFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -17,7 +23,7 @@ Resources:
       Runtime: nodejs22.x
       Architectures:
         - x86_64
-      MemorySize: 128
+      MemorySize: 256
       Timeout: 20
       Events:
         Api:
@@ -25,6 +31,7 @@ Resources:
           Properties:
             Path: /createDeliveryJobs
             Method: POST
+            RestApiId: !Ref ApiGateway
       Policies:
         - AWSLambdaBasicExecutionRole
       Environment:
@@ -52,6 +59,7 @@ Resources:
           Properties:
             Path: /snap
             Method: POST
+            RestApiId: !Ref ApiGateway
       Policies:
         - AWSLambdaBasicExecutionRole
       Environment:
@@ -65,9 +73,10 @@ Resources:
         Sourcemap: true
 
 Outputs:
-  WebEndpoint:
-    Description: API Gateway endpoint URL for Prod stage
-    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
+  RoutingServiceApiId:
+    Description: API Gateway Id
+    Value: !Ref ApiGateway
+
 Globals:
   Function:
     LoggingConfig:

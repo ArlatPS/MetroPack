@@ -56,7 +56,7 @@ Resources:
       Architectures:
         - x86_64
       MemorySize: 256
-      Timeout: 15
+      Timeout: 10
       Policies:
         - DynamoDBReadPolicy:
               TableName: !Ref CityTable
@@ -187,7 +187,7 @@ Resources:
       Runtime: nodejs22.x
       Architectures:
         - x86_64
-      MemorySize: 128
+      MemorySize: 256
       Timeout: 300
       Policies:
         - DynamoDBCrudPolicy:
@@ -208,9 +208,10 @@ Resources:
         Sourcemap: true
 
 Outputs:
-  ApiEndpoint:
-    Description: API Gateway endpoint URL
-    Value: !Sub "https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/prod"
+  DynamicPricingServiceApiId:
+    Description: API Gateway Id
+    Value: !Ref ApiGateway
+
 Globals:
   Function:
     LoggingConfig:

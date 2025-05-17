@@ -252,9 +252,10 @@ Resources:
         WriteCapacityUnits: 1
 
 Outputs:
-  ApiEndpoint:
-    Description: API Gateway endpoint URL
-    Value: !Sub "https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/prod"
+  BillingServiceApiId:
+    Description: API Gateway Id
+    Value: !Ref ApiGateway
+
 Globals:
   Function:
     LoggingConfig:

@@ -8,7 +8,7 @@ sam validate
 sam build
 ```
 ```bash 
-sam deploy --stack-name routing-service --guided
+sam deploy --stack-name routing-service --parameter-overrides OrsKey=
 ```
 ```bash 
 sam sync --stack-name routing-service --watch

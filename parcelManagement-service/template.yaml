@@ -89,8 +89,8 @@ Resources:
       Runtime: nodejs22.x
       Architectures:
         - x86_64
-      MemorySize: 128
-      Timeout: 5
+      MemorySize: 256
+      Timeout: 10
       Events:
         Api:
           Type: Api
@@ -126,44 +126,45 @@ Resources:
       FifoQueue: true
       ContentBasedDeduplication: true
 
-  UpdateParcelEventsRule:
-    Type: AWS::Events::Rule
+  ParcelEventsToSQSFunction:
+    Type: AWS::Serverless::Function
     Properties:
-      EventBusName: !Ref EventBus
-      EventPattern:
-        detail-type:
-          - 'parcelManagementService.parcelPickedUp'
-          - 'parcelManagementService.parcelDeliveredToWarehouse'
-          - 'parcelManagementService.parcelTransferStarted'
-          - 'parcelManagementService.parcelTransferCompleted'
-          - 'parcelManagementService.parcelDeliveryStarted'
-          - 'parcelManagementService.parcelDelivered'
-      Targets:
-        - Id: UpdateParcelEventsQueueTarget
-          RoleArn: !GetAtt EventBridgeRole.Arn
-          Arn: !GetAtt UpdateParcelEventsQueue.Arn
-          SqsParameters:
-            MessageGroupId: "default"
-
-  EventBridgeRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: events.amazonaws.com
-            Action: sts:AssumeRole
+      Handler: src/handlers/parcelEventsToSQS.handler
+      Runtime: nodejs22.x
+      Architectures:
+        - x86_64
+      MemorySize: 256
+      Timeout: 5
+      Events:
+        CreatePickupOrderEventRule:
+          Type: EventBridgeRule
+          Properties:
+            EventBusName: !Ref EventBus
+            Pattern:
+              detail-type:
+                - 'parcelManagementService.parcelPickedUp'
+                - 'parcelManagementService.parcelDeliveredToWarehouse'
+                - 'parcelManagementService.parcelTransferStarted'
+                - 'parcelManagementService.parcelTransferCompleted'
+                - 'parcelManagementService.parcelDeliveryStarted'
+                - 'parcelManagementService.parcelDelivered'
+                - 'parcelManagementService.parcelDeliveredToWarehouse'
+                - 'parcelManagementService.parcelTransferCompleted'
       Policies:
-        - PolicyName: EventBridgeSendMessageToSQS
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Effect: Allow
-                Action:
-                  - sqs:SendMessage
-                Resource: !GetAtt UpdateParcelEventsQueue.Arn
+        - SQSSendMessagePolicy:
+            QueueName: !GetAtt UpdateParcelEventsQueue.QueueName
+        - SQSSendMessagePolicy:
+            QueueName: !GetAtt DeliveryToWarehouseEventsQueue.QueueName
+      Environment:
+        Variables:
+          UPDATE_PARCEL_EVENTS_QUEUE_URL: !GetAtt UpdateParcelEventsQueue.QueueUrl
+          DELIVERY_TO_WAREHOUSE_EVENTS_QUEUE_URL: !GetAtt DeliveryToWarehouseEventsQueue.QueueUrl
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
 
   UpdateParcelEventsFunction:
     Type: AWS::Serverless::Function
@@ -174,12 +175,13 @@ Resources:
         - x86_64
       MemorySize: 128
       Timeout: 5
-#      ReservedConcurrentExecutions: 5
       Events:
         UpdateParcelEventsQueueEvent:
           Type: SQS
           Properties:
             Queue: !GetAtt UpdateParcelEventsQueue.Arn
+            ScalingConfig:
+              MaximumConcurrency: 5
       Policies:
         - SQSPollerPolicy:
             QueueName: !GetAtt UpdateParcelEventsQueue.QueueName
@@ -188,6 +190,59 @@ Resources:
       Environment:
         Variables:
           PARCEL_TABLE: !Ref ParcelTable
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+
+  DeliveryToWarehouseEventsQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: DeliveryToWarehouseEventsQueue.fifo
+      FifoQueue: true
+      ContentBasedDeduplication: true
+
+  DeliveryToWarehouseEventsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/deliveryToWarehouseEvents.handler
+      Runtime: nodejs22.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 20
+      Events:
+        DeliveryToWarehouseEventsQueueEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt DeliveryToWarehouseEventsQueue.Arn
+            BatchSize: 1
+            ScalingConfig:
+              MaximumConcurrency: 5
+      Policies:
+        - SQSPollerPolicy:
+            QueueName: !GetAtt DeliveryToWarehouseEventsQueue.QueueName
+        - DynamoDBCrudPolicy:
+            TableName: !Ref PickupJobTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref TransferJobTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DeliveryOrderTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref ParcelTable
+        - Statement:
+            - Effect: Allow
+              Action: events:PutEvents
+              Resource: !GetAtt EventBus.Arn
+      Environment:
+        Variables:
+          PICKUP_JOB_TABLE: !Ref PickupJobTable
+          TRANSFER_JOB_TABLE: !Ref TransferJobTable
+          PARCEL_TABLE: !Ref ParcelTable
+          EVENT_BUS_NAME: !Ref EventBus
+          DELIVERY_ORDER_TABLE: !Ref DeliveryOrderTable
     Metadata:
       BuildMethod: esbuild
       BuildProperties:
@@ -354,85 +409,6 @@ Resources:
           DELIVERY_JOB_TABLE: !Ref DeliveryJobTable
           EVENT_BUS_NAME: !Ref EventBus
           WAREHOUSE_TABLE: !Ref WarehouseTable
-    Metadata:
-      BuildMethod: esbuild
-      BuildProperties:
-        Minify: true
-        Target: es2020
-        Sourcemap: true
-
-  DeliveryToWarehouseEventsQueue:
-    Type: AWS::SQS::Queue
-    Properties:
-      QueueName: DeliveryToWarehouseEventsQueue.fifo
-      FifoQueue: true
-      ContentBasedDeduplication: true
-
-  DeliveryToWarehouseEventsQueuePolicy:
-    Type: AWS::SQS::QueuePolicy
-    Properties:
-      Queues:
-        - !Ref DeliveryToWarehouseEventsQueue
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: events.amazonaws.com
-            Action: sqs:SendMessage
-            Resource: !GetAtt DeliveryToWarehouseEventsQueue.Arn
-
-  DeliveryToWarehouseEventsRule:
-    Type: AWS::Events::Rule
-    Properties:
-      EventBusName: !Ref EventBus
-      EventPattern:
-        detail-type:
-          - 'parcelManagementService.parcelDeliveredToWarehouse'
-          - 'parcelManagementService.parcelTransferCompleted'
-      Targets:
-        - Id: DeliveryToWarehouseEventsQueueTarget
-          Arn: !GetAtt DeliveryToWarehouseEventsQueue.Arn
-          SqsParameters:
-            MessageGroupId: "default"
-
-  DeliveryToWarehouseEventsFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      Handler: src/handlers/deliveryToWarehouseEvents.handler
-      Runtime: nodejs22.x
-      Architectures:
-        - x86_64
-      MemorySize: 128
-      Timeout: 20
-      Events:
-        DeliveryToWarehouseEventsQueueEvent:
-          Type: SQS
-          Properties:
-            Queue: !GetAtt DeliveryToWarehouseEventsQueue.Arn
-            BatchSize: 1
-      Policies:
-        - SQSPollerPolicy:
-            QueueName: !GetAtt DeliveryToWarehouseEventsQueue.QueueName
-        - DynamoDBCrudPolicy:
-            TableName: !Ref PickupJobTable
-        - DynamoDBCrudPolicy:
-            TableName: !Ref TransferJobTable
-        - DynamoDBCrudPolicy:
-            TableName: !Ref DeliveryOrderTable
-        - DynamoDBReadPolicy:
-            TableName: !Ref ParcelTable
-        - Statement:
-            - Effect: Allow
-              Action: events:PutEvents
-              Resource: !GetAtt EventBus.Arn
-      Environment:
-        Variables:
-          PICKUP_JOB_TABLE: !Ref PickupJobTable
-          TRANSFER_JOB_TABLE: !Ref TransferJobTable
-          PARCEL_TABLE: !Ref ParcelTable
-          EVENT_BUS_NAME: !Ref EventBus
-          DELIVERY_ORDER_TABLE: !Ref DeliveryOrderTable
     Metadata:
       BuildMethod: esbuild
       BuildProperties:
@@ -902,9 +878,7 @@ Resources:
   EventGeneratorProcessJobsEventsQueue:
     Type: AWS::SQS::Queue
     Properties:
-      QueueName: EventGeneratorProcessJobsEventsQueue.fifo
-      FifoQueue: true
-      ContentBasedDeduplication: true
+      QueueName: EventGeneratorProcessJobsEventsQueue
 
   EventGeneratorProcessJobsEventsQueuePolicy:
     Type: AWS::SQS::QueuePolicy
@@ -932,8 +906,6 @@ Resources:
       Targets:
         - Id: EventGeneratorProcessJobsQueueTarget
           Arn: !GetAtt EventGeneratorProcessJobsEventsQueue.Arn
-          SqsParameters:
-            MessageGroupId: "default"
 
   EventGeneratorProcessJobsFunction:
     Type: AWS::Serverless::Function
@@ -950,6 +922,8 @@ Resources:
           Properties:
             Queue: !GetAtt EventGeneratorProcessJobsEventsQueue.Arn
             BatchSize: 10
+            ScalingConfig:
+              MaximumConcurrency: 5
       Policies:
         - SQSPollerPolicy:
             QueueName: !GetAtt EventGeneratorProcessJobsEventsQueue.QueueName
@@ -991,6 +965,7 @@ Resources:
           Type: Schedule
           Properties:
             Schedule: cron(0 5 * * ? *)
+#            Schedule: cron(* * * * ? *)
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref EventGeneratorJobTable
@@ -1064,9 +1039,10 @@ Resources:
             WriteCapacityUnits: 1
 
 Outputs:
-  ApiEndpoint:
-    Description: API Gateway endpoint URL
-    Value: !Sub "https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/prod"
+  ParcelManagementServiceApiId:
+    Description: API Gateway Id
+    Value: !Ref ApiGateway
+
 Globals:
   Function:
     LoggingConfig:

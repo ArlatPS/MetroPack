@@ -2,3 +2,4 @@
 */.aws-sam
 */coverage
 .idea
+.aws-sam

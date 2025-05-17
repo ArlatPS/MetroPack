@@ -20,8 +20,6 @@ Resources:
           Properties:
             Path: /vendor/{vendorId}
             Method: GET
-            Auth:
-              Authorizer: AWS_IAM
       Policies:
         - DynamoDBReadPolicy:
             TableName: !Ref VendorTable
@@ -43,15 +41,13 @@ Resources:
       Architectures:
         - x86_64
       MemorySize: 128
-      Timeout: 5
+      Timeout: 10
       Events:
         Api:
           Type: Api
           Properties:
             Path: /vendor/register
             Method: POST
-            Auth:
-              Authorizer: AWS_IAM
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref VendorTable
@@ -73,15 +69,13 @@ Resources:
       Architectures:
         - x86_64
       MemorySize: 128
-      Timeout: 5
+      Timeout: 10
       Events:
         Api:
           Type: Api
           Properties:
             Path: /vendor/update
             Method: POST
-            Auth:
-              Authorizer: AWS_IAM
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref VendorTable

@@ -1,7 +1,7 @@
 {
   "version": "1",
   "id": "12345678-1234-1234-1234-123456789012",
-  "detail-type": "parcelManagementService.orderCompleted",
+  "detail-type": "buyerService.orderCreationCancelled",
   "source": "lambdaName",
   "time": "2022-01-01T00:00:00Z",
   "region": "eu-central-1",
@@ -10,16 +10,16 @@
   ],
   "detail": {
     "metadata": {
-      "domain": "parcelShipping",
-      "subdomain": "parcelManagement",
-      "service": "parcelManagementService",
+      "domain": "customerService",
+      "subdomain": "buyer",
+      "service": "buyerService",
       "category": "domainEvent",
       "type": "data",
-      "name": "orderCompleted"
+      "name": "orderCreationCancelled"
     },
     "data": {
       "orderId": "12345678-1234-1234-1234-123456789012",
-      "date": "2022-01-01T00:00:00Z"
+      "vendorId": "12345678-1234-1234-1234-123456789012"
     }
   }
 }

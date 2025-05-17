@@ -20,6 +20,7 @@ jobs:
           - billing-service
           - routing-service
           - parcelManagement-service
+          - buyer-service
 
     steps:
       - name: Checkout repository

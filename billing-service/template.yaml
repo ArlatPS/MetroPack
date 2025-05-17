@@ -146,7 +146,7 @@ Resources:
             EventBusName: !Ref EventBus
             Pattern:
               detail-type:
-                - 'vendorService.orderCreated'
+                - 'buyerService.orderCreated'
     Metadata:
       BuildMethod: esbuild
       BuildProperties:
@@ -154,10 +154,10 @@ Resources:
         Target: es2020
         Sourcemap: true
 
-  OrderCompletedFunction:
+  OrderCreationCancelledFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Handler: src/handlers/orderCompleted.handler
+      Handler: src/handlers/orderCreationCancelled.handler
       Runtime: nodejs22.x
       Architectures:
         - x86_64
@@ -167,8 +167,11 @@ Resources:
         - AWSLambdaBasicExecutionRole
         - DynamoDBCrudPolicy:
             TableName: !Ref OrderTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref BillTable
       Environment:
         Variables:
+          BILL_TABLE: !Ref BillTable
           ORDER_TABLE: !Ref OrderTable
       Events:
         OfferAcceptedRule:
@@ -177,7 +180,7 @@ Resources:
             EventBusName: !Ref EventBus
             Pattern:
               detail-type:
-                - 'parcelManagementService.orderCompleted'
+                - 'buyerService.orderCreationCancelled'
     Metadata:
       BuildMethod: esbuild
       BuildProperties:

@@ -1,7 +1,7 @@
 {
   "version": "1",
   "id": "12345678-1234-1234-1234-123456789012",
-  "detail-type": "buyerService.offerAccepted",
+  "detail-type": "buyerService.offerAcceptCancelled",
   "source": "lambdaName",
   "time": "2022-01-01T00:00:00Z",
   "region": "eu-central-1",
@@ -15,10 +15,10 @@
       "service": "buyerService",
       "category": "domainEvent",
       "type": "data",
-      "name": "offerAccepted"
+      "name": "offerAcceptCancelled"
     },
     "data": {
-        "offerId": "12345678-1234-1234-1234-123456789012"
+      "offerId": "12345678-1234-1234-1234-123456789012"
     }
   }
 }

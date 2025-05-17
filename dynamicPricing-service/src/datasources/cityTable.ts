@@ -1,4 +1,4 @@
-import { DynamoDBDocumentClient, QueryCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, QueryCommand, UpdateCommand, PutCommand, ScanCommand } from '@aws-sdk/lib-dynamodb';
 import { getNextWorkingDays } from '../helpers/dateHelpers';
 
 interface City {
@@ -56,4 +56,87 @@ export async function getCity(cityCodename: string, ddbDocClient: DynamoDBDocume
             return acc;
         }, {} as City['dates']),
     } as City;
+}
+
+export async function updateCityCapacity(
+    cityCodename: string,
+    date: string,
+    type: 'Pickup' | 'Delivery',
+    operation: 'increase' | 'decrease',
+    ddbDocClient: DynamoDBDocumentClient,
+): Promise<void> {
+    const cityTable = process.env.CITY_TABLE;
+    if (!cityTable) throw new Error('City table is not set');
+
+    const value = operation === 'increase' ? 1 : -1;
+
+    const params = {
+        TableName: cityTable,
+        Key: {
+            cityCodename,
+            date,
+        },
+        UpdateExpression: `SET current${type}Capacity = current${type}Capacity + :val`,
+        ExpressionAttributeValues: {
+            ':val': value,
+        },
+    };
+
+    await ddbDocClient.send(new UpdateCommand(params));
+}
+
+export async function copyAllCityItemsWithNewDate(
+    newDate: string,
+    ddbDocClient: DynamoDBDocumentClient,
+): Promise<void> {
+    const cityTable = process.env.CITY_TABLE;
+    if (!cityTable) throw new Error('City table is not set');
+
+    const scanParams = {
+        TableName: cityTable,
+        ProjectionExpression: 'cityCodename',
+    };
+
+    const cityCodenames = new Set<string>();
+    let lastEvaluatedKey;
+
+    do {
+        const scanResult = (await ddbDocClient.send(
+            new ScanCommand({ ...scanParams, ExclusiveStartKey: lastEvaluatedKey }),
+        )) as unknown as { Items: { cityCodename: string }[]; LastEvaluatedKey?: { cityCodename: string } };
+        scanResult.Items?.forEach((item) => cityCodenames.add(item.cityCodename));
+        lastEvaluatedKey = scanResult.LastEvaluatedKey;
+    } while (lastEvaluatedKey);
+
+    for (const cityCodename of cityCodenames) {
+        const queryParams = {
+            TableName: cityTable,
+            KeyConditionExpression: 'cityCodename = :cityCodename',
+            ExpressionAttributeValues: {
+                ':cityCodename': cityCodename,
+            },
+            ScanIndexForward: false,
+            Limit: 1,
+        };
+
+        const queryResult = await ddbDocClient.send(new QueryCommand(queryParams));
+        const latestItem = queryResult.Items?.[0];
+
+        if (!latestItem) continue;
+
+        const newItem = {
+            ...latestItem,
+            date: newDate,
+            currentDeliveryCapacity: latestItem.maxDeliveryCapacity,
+            currentPickupCapacity: latestItem.maxPickupCapacity,
+            multiplier: Math.round((Math.random() * (2.0 - 0.5) + 0.5) * 10) / 10,
+        };
+
+        const putParams = {
+            TableName: cityTable,
+            Item: newItem,
+        };
+
+        await ddbDocClient.send(new PutCommand(putParams));
+    }
 }

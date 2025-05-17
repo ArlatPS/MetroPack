@@ -1,12 +1,11 @@
 import { BatchGetItemCommand, QueryCommand } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, UpdateCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 import { unmarshall } from '@aws-sdk/util-dynamodb';
 
 export interface Order {
     orderId: string;
     date: string;
     price: number;
-    completed: boolean;
 }
 
 export async function getOrder(orderId: string, ddbDocClient: DynamoDBDocumentClient): Promise<Order | null> {
@@ -77,33 +76,24 @@ export function getAddOrderTransactItem(order: Order) {
                 orderId: order.orderId,
                 date: order.date,
                 price: order.price,
-                completed: order.completed,
             },
         },
     };
 }
 
-export async function updateOrderStatus(
-    orderId: string,
-    completed: boolean,
-    ddbDocClient: DynamoDBDocumentClient,
-): Promise<void> {
+export function getRemoveOrderTransactItem(orderId: string) {
     const orderTable = process.env.ORDER_TABLE;
 
     if (!orderTable) {
         throw new Error('Order table is not set');
     }
 
-    const params = {
-        TableName: orderTable,
-        Key: {
-            orderId,
-        },
-        UpdateExpression: 'set completed = :completed',
-        ExpressionAttributeValues: {
-            ':completed': completed,
+    return {
+        Delete: {
+            TableName: orderTable,
+            Key: {
+                orderId,
+            },
         },
     };
-
-    await ddbDocClient.send(new UpdateCommand(params));
 }

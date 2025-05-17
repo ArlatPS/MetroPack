@@ -8,7 +8,16 @@
  },
  "range": 20
 }
-
+{
+ "warehouseId": "07493d5e-e174-4d97-9776-6f9b53fd8512",
+ "status": "AVAILABLE",
+ "cityCodename": "pl_warszawa",
+ "location": {
+  "latitude": 52.214508,
+  "longitude": 20.953986
+ },
+ "range": 20
+}
 {
  "vehicleId": "16cce0e7-7120-4717-ac69-a5950a519d04",
  "capacity": 28800,

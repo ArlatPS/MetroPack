@@ -87,7 +87,9 @@ export class Offer {
         const pickupCity = await getCity(pickupCityCodename, this.ddbDocClient);
         const deliveryCity = await getCity(deliveryCityCodename, this.ddbDocClient);
 
-        const pickupDates = Object.keys(pickupCity.dates);
+        const pickupDates = Object.keys(pickupCity.dates).filter(
+            (date) => pickupCity.dates[date].currentPickupCapacity > 0,
+        );
 
         const pickupPrices = pickupDates.reduce((acc, date) => {
             acc[date] = this.calculatePrice(
@@ -99,7 +101,9 @@ export class Offer {
             return acc;
         }, {} as Record<string, number>);
 
-        const deliveryDates = Object.keys(deliveryCity.dates);
+        const deliveryDates = Object.keys(deliveryCity.dates).filter(
+            (date) => deliveryCity.dates[date].currentDeliveryCapacity > 0,
+        );
 
         const deliveryPrices = deliveryDates.reduce((acc, date) => {
             acc[date] = this.calculatePrice(

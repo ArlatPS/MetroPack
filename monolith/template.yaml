@@ -41,6 +41,15 @@ Resources:
                 Action:
                   - s3:GetObject
                 Resource: arn:aws:s3:::metropack-builds/app.zip
+        - PolicyName: DynamoDBAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:PutItem
+                  - dynamodb:Query
+                Resource: !GetAtt MonolithVendorTable.Arn
 
   ExpressInstanceProfile:
     Type: AWS::IAM::InstanceProfile
@@ -58,7 +67,7 @@ Resources:
       IamInstanceProfile: !Ref ExpressInstanceProfile
       ImageId: ami-02b7d5b1e55a7b5f1
       UserData:
-        Fn::Base64: |
+        Fn::Base64: | 
           #!/bin/bash
           curl -sL https://rpm.nodesource.com/setup_18.x | bash -
           yum install -y nodejs unzip awscli
@@ -67,7 +76,28 @@ Resources:
           cd /home/ec2-user/app
           npm install
           npm run build
+          export VENDOR_TABLE=MonolithVendorTable
+          export AWS_REGION=eu-central-1
           nohup node dist/index.js > app.log 2>&1 &
+
+
+  MonolithVendorTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: MonolithVendorTable
+      AttributeDefinitions:
+        - AttributeName: vendorId
+          AttributeType: S
+        - AttributeName: eventOrder
+          AttributeType: N
+      KeySchema:
+        - AttributeName: vendorId
+          KeyType: HASH
+        - AttributeName: eventOrder
+          KeyType: RANGE
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
 
 Outputs:
   InstancePublicIp:

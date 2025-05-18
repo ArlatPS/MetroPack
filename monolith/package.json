@@ -4,7 +4,7 @@
     "description": "Monolith implementation of MetroPack",
     "scripts": {
         "unit": "jest",
-        "lint": "eslint src/ --fix",
+        "lint": "eslint --fix",
         "build": "tsc",
         "test": "npm run compile && npm run unit",
         "zip": "powershell Compress-Archive -Path * -DestinationPath app.zip -Force",

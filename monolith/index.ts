@@ -1,11 +1,23 @@
 import express from 'express';
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
+
+import { VendorModel } from './models';
+import { VendorController } from './controllers';
+import { vendorRoutes } from './routes';
 
 const app = express();
-const port = 3000;
+app.use(express.json());
 
-app.get('/', (req, res) => {
-    res.send('Hello from Express on EC2!');
-});
+const client = new DynamoDBClient({});
+const ddbDocClient = DynamoDBDocumentClient.from(client);
+
+const vendorModel = new VendorModel(ddbDocClient);
+const vendorController = new VendorController(vendorModel);
+
+app.use('/', vendorRoutes(vendorController));
+
+const port = 3000;
 
 app.listen(port, () => {
     console.log(`Server running at http://localhost:${port}`);

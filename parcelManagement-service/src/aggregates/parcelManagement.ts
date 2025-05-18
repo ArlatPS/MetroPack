@@ -94,6 +94,10 @@ export class ParcelManagement {
 
             const availableVehicles = await getAvailableVehicles(warehouseId, 'PICKUP', this.ddbDocClient);
 
+            if (availableVehicles.length === 0) {
+                throw new NotFoundError(`No available pickup vehicles for warehouse ${warehouseId}`);
+            }
+
             const { jobs, vehicles } = await getOptimizedJobs(availableVehicles, warehouse, orders);
 
             const vehicleCapacityUpdateTransactItems = vehicles.map((vehicle) =>
@@ -146,6 +150,10 @@ export class ParcelManagement {
             lastDeliveryOrderKey = lastKey;
 
             const availableVehicles = await getAvailableVehicles(warehouseId, 'DELIVERY', this.ddbDocClient);
+
+            if (availableVehicles.length === 0) {
+                throw new NotFoundError(`No available delivery vehicles for warehouse ${warehouseId}`);
+            }
 
             const { jobs, vehicles } = await getOptimizedJobs(availableVehicles, warehouse, orders);
 

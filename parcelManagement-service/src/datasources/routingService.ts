@@ -112,7 +112,7 @@ async function makeRequest(
         throw new Error('ROUTING_API_ID environment variable is not set');
     }
 
-    const apiBaseUrl = `https://${apiId}.execute-api.${region}.amazonaws.com/Prod`;
+    const apiBaseUrl = `https://${apiId}.execute-api.${region}.amazonaws.com/prod`;
     const url = parseUrl(`${apiBaseUrl}/${endpoint}`);
 
     const request = new HttpRequest({

@@ -34,12 +34,11 @@ export async function getAvailableVehicles(
             ':type': type,
             ':capacity': capacity,
         },
-        Limit: limit,
     };
 
     const data = await ddbDocClient.send(new ScanCommand(params));
 
-    return data.Items as Vehicle[];
+    return (data.Items || []).slice(0, limit) as Vehicle[];
 }
 
 export function getVehicleCapacityUpdateTransactItem(vehicle: Vehicle) {

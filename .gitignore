@@ -1,5 +1,7 @@
 */node_modules
 */.aws-sam
 */coverage
+*/dist
+*/app.zip
 .idea
 .aws-sam

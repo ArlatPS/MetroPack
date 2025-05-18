@@ -1,5 +1,8 @@
 # CHANGELOG
 
+## [0.9.0] - 2025-05-18
+- Load testing in Artillery.
+
 ## [0.8.0] - 2025-05-18
 - Deployment with one cloudformation stack.
 

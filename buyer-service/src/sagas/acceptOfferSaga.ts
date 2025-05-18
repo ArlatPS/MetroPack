@@ -24,7 +24,7 @@ export class AcceptOfferSaga {
         vendorId: string,
         pickupLocation: { longitude: number; latitude: number },
         deliveryLocation: { longitude: number; latitude: number },
-    ): Promise<void> {
+    ): Promise<string> {
         const parcelId = randomUUID();
 
         try {
@@ -44,12 +44,15 @@ export class AcceptOfferSaga {
             );
 
             await this.registerParcel(parcelId, offer, pickupLocation, deliveryLocation);
+
+            return parcelId;
         } catch (error) {
             await this.executeCompensatingActions();
 
             if (this.compensatingActionsFailed) {
                 throw new Error('Compensating actions failed');
             }
+            throw new Error(`Saga execution failed: ${error}`);
         }
     }
 

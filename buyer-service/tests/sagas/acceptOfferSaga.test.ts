@@ -54,7 +54,7 @@ describe('AcceptOfferSaga', () => {
 
         jest.spyOn(billingService, 'putOrderCreatedEvent').mockRejectedValue(new Error('Step failed'));
 
-        await saga.execute(offer, email, vendorId, pickupLocation, deliveryLocation);
+        await expect(saga.execute(offer, email, vendorId, pickupLocation, deliveryLocation)).rejects.toThrow();
 
         expect(dynamicPricingService.putOfferAcceptCancelledEvent).toHaveBeenCalledWith('offer123', mockContext);
     });

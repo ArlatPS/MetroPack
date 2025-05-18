@@ -1,0 +1,72 @@
+config:
+  target: http://localhost
+  phases:
+    - duration: 30
+      arrivalRate: 1
+      rampTo: 5
+      name: "Warmup"
+    - duration: 30
+      arrivalRate: 5
+      name: "Steady"
+    - duration: 30
+      arrivalRate: 10
+      name: "Peak"
+  plugins:
+    metrics-by-endpoint: {}
+  processor: "./processor.js"
+
+scenarios:
+  - name: 'Offer not accepted'
+    weight: 4
+    flow:
+      - post:
+          url: "https://DYNAMIC_PRICING_SERVICE_ID.execute-api.eu-central-1.amazonaws.com/prod/createOffer"
+          json:
+            pickupCityCodename: "{{ pickupCityCodename }}"
+            deliveryCityCodename: "{{ deliveryCityCodename }}"
+          beforeRequest: "generateOfferRequest"
+          afterResponse: "extractOfferId"
+
+  - name: 'Offer accepted'
+    weight: 1
+    flow:
+      - post:
+          url: "https://DYNAMIC_PRICING_SERVICE_ID.execute-api.eu-central-1.amazonaws.com/prod/createOffer"
+          json:
+            pickupCityCodename: "{{ pickupCityCodename }}"
+            deliveryCityCodename: "{{ deliveryCityCodename }}"
+          beforeRequest: "generateOfferRequest"
+          afterResponse: "extractOfferId"
+
+      - post:
+          url: "https://BUYER_SERVICE_ID.execute-api.eu-central-1.amazonaws.com/prod/acceptOffer"
+          json:
+            offerId: "{{ offerId }}"
+            email: "{{ email }}"
+            vendorId: "{{ vendorId }}"
+            pickupLocation:
+              longitude: "{{ pickupLocationLongitude }}"
+              latitude: "{{ pickupLocationLatitude }}"
+            deliveryLocation:
+              longitude: "{{ deliveryLocationLongitude }}"
+              latitude: "{{ deliveryLocationLatitude }}"
+          beforeRequest: "generateAcceptOfferRequest"
+          afterResponse: "extractParcelId"
+
+      - get:
+          url: "https://PARCEL_MANAGEMENT_ID.execute-api.eu-central-1.amazonaws.com/prod/parcel/{{ parcelId }}"
+
+      - get:
+          url: "https://BUYER_SERVICE_ID.execute-api.eu-central-1.amazonaws.com/prod/buyer/{{ email }}"
+
+      - post:
+          url: "https://BILLING_SERVICE_ID.execute-api.eu-central-1.amazonaws.com/prod/bills"
+          json:
+              vendorId: "{{ vendorId }}"
+          afterResponse: "extractBillMonth"
+
+      - post:
+          url: "https://BILLING_SERVICE_ID.execute-api.eu-central-1.amazonaws.com/prod/bill"
+          json:
+            vendorId: "{{ vendorId }}"
+            month: "{{ month }}"

@@ -32,7 +32,18 @@ export const handler = async (event: APIGatewayProxyEvent, context: Context): Pr
         }
 
         const acceptOfferSaga = new AcceptOfferSaga(ddbDocClient, context);
-        await acceptOfferSaga.execute(offer, body.email, body.vendorId, body.pickupLocation, body.deliveryLocation);
+        const parcelId = await acceptOfferSaga.execute(
+            offer,
+            body.email,
+            body.vendorId,
+            body.pickupLocation,
+            body.deliveryLocation,
+        );
+
+        return {
+            statusCode: 200,
+            body: JSON.stringify({ parcelId }),
+        };
     } catch (err) {
         console.error(err);
 
@@ -43,9 +54,4 @@ export const handler = async (event: APIGatewayProxyEvent, context: Context): Pr
             }),
         };
     }
-
-    return {
-        statusCode: 200,
-        body: 'OK',
-    };
 };

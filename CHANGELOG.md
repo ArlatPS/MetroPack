@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## [0.8.0] - 2025-05-18
+- Deployment with one cloudformation stack.
+
+## [0.7.0] - 2025-05-17
+- `Buyer` service.
+
+## [0.6.0] - 2025-05-11
+- `ParcelManagement` service.
+
 ## [0.5.0] - 2025-04-23
 - `Ors` datasource for routing.
 

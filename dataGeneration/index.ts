@@ -6,7 +6,7 @@ import { getNextWorkingDays } from "./dates";
 
 const WAREHOUSE_TABLE = "WarehouseTable";
 const VEHICLE_TABLE = "VehicleTable";
-const CITY_TABLE = "CityTable";
+const CITY_TABLE = "MonolithCityTable";
 
 const VEHICLE_CAPACITY = 80;
 
@@ -82,37 +82,37 @@ const ddbDocClient = DynamoDBDocumentClient.from(client);
 
 async function main(): Promise<void> {
   for (const warehouse of warehouses) {
-    await putItem(warehouse.warehouse, WAREHOUSE_TABLE, ddbDocClient);
-    console.log("Warehouse created:", warehouse.warehouse);
-
-    for (let i = 0; i < warehouse.pickupVehicles; i++) {
-      await putItem(
-        {
-          capacity: 28800,
-          vehicleId: randomUUID(),
-          type: "PICKUP",
-          warehouseId: warehouse.warehouse.warehouseId,
-        },
-        VEHICLE_TABLE,
-        ddbDocClient
-      );
-      console.log("Pickup vehicle created:", i);
-      await sleep();
-    }
-    for (let i = 0; i < warehouse.deliveryVehicles; i++) {
-      await putItem(
-        {
-          capacity: 28800,
-          vehicleId: randomUUID(),
-          type: "DELIVERY",
-          warehouseId: warehouse.warehouse.warehouseId,
-        },
-        VEHICLE_TABLE,
-        ddbDocClient
-      );
-      console.log("Delivery vehicle created:", i);
-      await sleep();
-    }
+    // await putItem(warehouse.warehouse, WAREHOUSE_TABLE, ddbDocClient);
+    // console.log("Warehouse created:", warehouse.warehouse);
+    //
+    // for (let i = 0; i < warehouse.pickupVehicles; i++) {
+    //   await putItem(
+    //     {
+    //       capacity: 28800,
+    //       vehicleId: randomUUID(),
+    //       type: "PICKUP",
+    //       warehouseId: warehouse.warehouse.warehouseId,
+    //     },
+    //     VEHICLE_TABLE,
+    //     ddbDocClient
+    //   );
+    //   console.log("Pickup vehicle created:", i);
+    //   await sleep();
+    // }
+    // for (let i = 0; i < warehouse.deliveryVehicles; i++) {
+    //   await putItem(
+    //     {
+    //       capacity: 28800,
+    //       vehicleId: randomUUID(),
+    //       type: "DELIVERY",
+    //       warehouseId: warehouse.warehouse.warehouseId,
+    //     },
+    //     VEHICLE_TABLE,
+    //     ddbDocClient
+    //   );
+    //   console.log("Delivery vehicle created:", i);
+    //   await sleep();
+    // }
     for (const date of getNextWorkingDays(3)) {
       await putItem(
         {

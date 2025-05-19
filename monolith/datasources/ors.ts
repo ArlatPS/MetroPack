@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { intToUuid, uuidToInt } from '../helpers/id';
+import { intToUuid, uuidToInt } from '../helpers/idHelpers';
 
 export interface Vehicle {
     id: string;

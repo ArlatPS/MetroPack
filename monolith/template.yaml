@@ -51,8 +51,13 @@ Resources:
               - Effect: Allow
                 Action:
                   - dynamodb:PutItem
+                  - dynamodb:UpdateItem
                   - dynamodb:Query
-                Resource: !GetAtt MonolithVendorTable.Arn
+                  - dynamodb:Scan
+                Resource:
+                  - !GetAtt MonolithVendorTable.Arn
+                  - !GetAtt MonolithCityTable.Arn
+                  - !GetAtt MonolithOfferTable.Arn
 
   ExpressInstanceProfile:
     Type: AWS::IAM::InstanceProfile
@@ -79,10 +84,13 @@ Resources:
           cd /home/ec2-user/app
           npm install
           npm run build
-          export VENDOR_TABLE=${MonolithVendorTable}
           export AWS_REGION=eu-central-1
           export ORS_API_KEY=${OrsKey}
+          export VENDOR_TABLE=${MonolithVendorTable}
+          export CITY_TABLE=${MonolithCityTable}
+          export OFFER_TABLE=${MonolithOfferTable}
           nohup node dist/index.js > app.log 2>&1 &
+          (crontab -l 2>/dev/null; echo "0 0 * * * curl -X POST http://localhost:3000/generateCityCapacity") | crontab -
 
 
   MonolithVendorTable:
@@ -103,6 +111,40 @@ Resources:
         ReadCapacityUnits: 1
         WriteCapacityUnits: 1
 
+  MonolithCityTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: MonolithCityTable
+      AttributeDefinitions:
+        - AttributeName: cityCodename
+          AttributeType: S
+        - AttributeName: date
+          AttributeType: S
+      KeySchema:
+        - AttributeName: cityCodename
+          KeyType: HASH
+        - AttributeName: date
+          KeyType: RANGE
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+
+  MonolithOfferTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: MonolithOfferTable
+      AttributeDefinitions:
+        - AttributeName: offerId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: offerId
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
 Outputs:
   InstancePublicIp:
     Description: Public IP of the EC2 instance

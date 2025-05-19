@@ -5,3 +5,4 @@ export * from './parcelModel';
 export * from './parcelManagementModel';
 export * from './trackingModel';
 export * from './eventGeneratorModel';
+export * from './acceptOfferSagaModel';

@@ -82,6 +82,7 @@ Resources:
                   - !GetAtt MonolithEventGeneratorVehicleTable.Arn
                   - !GetAtt MonolithEventGeneratorJobTable.Arn
                   - !Sub '${MonolithEventGeneratorJobTable.Arn}/index/VehicleStatusIndex'
+                  - !GetAtt MonolithBuyerTable.Arn
 
   ExpressInstanceProfile:
     Type: AWS::IAM::InstanceProfile
@@ -127,6 +128,7 @@ Resources:
           export VEHICLE_LOCATION_TABLE=${MonolithVehicleLocationTable}
           export EVENT_GENERATOR_VEHICLE_TABLE=${MonolithEventGeneratorVehicleTable}
           export EVENT_GENERATOR_JOB_TABLE=${MonolithEventGeneratorJobTable}
+          export BUYER_TABLE=${MonolithBuyerTable}
           nohup node dist/index.js > app.log 2>&1 &
           (crontab -l 2>/dev/null; echo "0 0 * * * curl -X POST http://localhost:3000/generateCityCapacity") | crontab -
           (crontab -l 2>/dev/null; echo "0 6 * * * curl -X POST http://localhost:3000/prepareJobs") | crontab -
@@ -523,6 +525,20 @@ Resources:
           ProvisionedThroughput:
             ReadCapacityUnits: 1
             WriteCapacityUnits: 1
+
+  MonolithBuyerTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: MonolithBuyerTable
+      AttributeDefinitions:
+        - AttributeName: email
+          AttributeType: S
+      KeySchema:
+        - AttributeName: email
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
 Outputs:
   InstancePublicIp:
     Description: Public IP of the EC2 instance

@@ -10,6 +10,7 @@ import {
     ParcelManagementModel,
     TrackingModel,
     EventGeneratorModel,
+    AcceptOfferSagaModel,
 } from './models';
 
 import {
@@ -18,9 +19,17 @@ import {
     DynamicPricingController,
     BillingController,
     ParcelManagementController,
+    BuyerController,
 } from './controllers';
 
-import { vendorRoutes, routingRoutes, dynamicPricingRoutes, billingRoutes, parcelManagementRoutes } from './routes';
+import {
+    vendorRoutes,
+    routingRoutes,
+    dynamicPricingRoutes,
+    billingRoutes,
+    parcelManagementRoutes,
+    buyerRoutes,
+} from './routes';
 
 const app = express();
 app.use(express.json());
@@ -54,6 +63,10 @@ const parcelManagementController = new ParcelManagementController(
     eventGeneratorModel,
 );
 app.use('/', parcelManagementRoutes(parcelManagementController));
+
+const acceptOfferSagaModel = new AcceptOfferSagaModel(offerModel, customerModel, parcelModel, ddbDocClient);
+const buyerController = new BuyerController(acceptOfferSagaModel, ddbDocClient);
+app.use('/', buyerRoutes(buyerController));
 
 const port = 3000;
 

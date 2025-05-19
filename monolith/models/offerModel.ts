@@ -33,10 +33,7 @@ export class OfferModel {
         );
     }
 
-    public async handleOfferAccepted(offerId: string): Promise<void> {
-        const offer = await this.getOfferById(offerId);
-        if (!offer) throw new Error(`Offer with ID ${offerId} not found`);
-
+    public async handleOfferAccepted(offer: OfferWithDetails): Promise<void> {
         await updateCityCapacity(offer.pickupCityCodename, offer.pickupDate, 'Pickup', 'decrease', this.ddbDocClient);
         await updateCityCapacity(
             offer.deliveryCityCodename,
@@ -47,10 +44,7 @@ export class OfferModel {
         );
     }
 
-    public async handleOfferAcceptCancelled(offerId: string): Promise<void> {
-        const offer = await this.getOfferById(offerId);
-        if (!offer) throw new Error(`Offer with ID ${offerId} not found`);
-
+    public async handleOfferAcceptCancelled(offer: OfferWithDetails): Promise<void> {
         await updateCityCapacity(offer.pickupCityCodename, offer.pickupDate, 'Pickup', 'increase', this.ddbDocClient);
         await updateCityCapacity(
             offer.deliveryCityCodename,

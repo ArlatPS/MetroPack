@@ -93,7 +93,7 @@ export async function putPickupOrder(order: Order, ddbDocClient: DynamoDBDocumen
 
     const params = {
         TableName: pickupOrderTable,
-        Item: marshall(order),
+        Item: marshall(order, { convertClassInstanceToMap: true, removeUndefinedValues: true }),
     };
 
     await ddbDocClient.send(new PutItemCommand(params));
@@ -108,7 +108,7 @@ export async function putDeliveryOrder(order: Order, ddbDocClient: DynamoDBDocum
 
     const params = {
         TableName: deliveryOrderTable,
-        Item: marshall(order),
+        Item: marshall(order, { convertClassInstanceToMap: true, removeUndefinedValues: true }),
     };
 
     await ddbDocClient.send(new PutItemCommand(params));

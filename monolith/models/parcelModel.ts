@@ -1,4 +1,5 @@
 import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
+import { randomUUID } from 'crypto';
 
 import { NotFoundError } from '../errors/NotFoundError';
 import { getParcelEvents, putParcelEvent } from '../datasources/parcelTable';
@@ -120,7 +121,7 @@ export class ParcelModel {
                     name: 'parcelRegistered',
                 },
                 data: {
-                    parcelId: parcelId || '',
+                    parcelId: parcelId || randomUUID(),
                     time: new Date().toISOString(),
                     pickupDate,
                     pickupLocation,
@@ -242,6 +243,11 @@ export class ParcelModel {
 
     private validateEvent(event: ParcelEvent): void {
         switch (event.detail.metadata.name) {
+            case 'parcelRegistered':
+                if (this.status !== ParcelStatus.TO_PICKUP) {
+                    throw new Error('Invalid state for parcelRegistered event');
+                }
+                break;
             case 'parcelPickedUp':
                 if (this.status !== ParcelStatus.TO_PICKUP) {
                     throw new Error('Invalid state for parcelPickedUp event');
@@ -277,7 +283,7 @@ export class ParcelModel {
                 }
                 break;
             default:
-                throw new Error(`Unknown event type: ${event.detail.metadata.name}`);
+                throw new Error(`Unknown event type: ${event}`);
         }
     }
 }

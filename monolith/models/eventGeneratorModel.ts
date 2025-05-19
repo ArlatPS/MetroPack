@@ -26,14 +26,14 @@ export class EventGeneratorModel {
     private readonly ddbDocClient: DynamoDBDocumentClient;
 
     constructor(
-        parcelManagementModel: ParcelManagementModel,
-        trackingModel: TrackingModel,
         parcelModel: ParcelModel,
+        trackingModel: TrackingModel,
+        parcelManagementModel: ParcelManagementModel,
         ddbDocClient: DynamoDBDocumentClient,
     ) {
-        this.parcelManagementModel = parcelManagementModel;
-        this.trackingModel = trackingModel;
         this.parcelModel = parcelModel;
+        this.trackingModel = trackingModel;
+        this.parcelManagementModel = parcelManagementModel;
         this.ddbDocClient = ddbDocClient;
     }
 

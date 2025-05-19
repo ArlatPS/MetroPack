@@ -1,4 +1,5 @@
 import { DynamoDBDocumentClient, ScanCommand, TransactWriteCommand } from '@aws-sdk/lib-dynamodb';
+import { chunkArray } from '../helpers/arrayHelpers';
 
 type VehicleType = 'PICKUP' | 'DELIVERY';
 
@@ -81,25 +82,23 @@ export async function resetVehiclesCapacity(ddbDocClient: DynamoDBDocumentClient
 
     const vehicleIds = data.Items?.map((item) => item.vehicleId) || [];
 
-    const transactItems = vehicleIds.map((vehicleId) => ({
-        Update: {
-            TableName: vehicleTable,
-            Key: {
-                vehicleId,
-            },
-            UpdateExpression: `SET #capacity = :val`,
-            ExpressionAttributeNames: {
-                '#capacity': 'capacity',
-            },
-            ExpressionAttributeValues: {
-                ':val': 8 * 60 * 60,
-            },
-        },
-    }));
+    const chunks = chunkArray(vehicleIds, 10);
 
-    await ddbDocClient.send(
-        new TransactWriteCommand({
-            TransactItems: transactItems,
-        }),
-    );
+    for (const chunk of chunks) {
+        const transactItems = chunk.map((vehicleId) => ({
+            Update: {
+                TableName: vehicleTable,
+                Key: { vehicleId },
+                UpdateExpression: `SET #capacity = :val`,
+                ExpressionAttributeNames: { '#capacity': 'capacity' },
+                ExpressionAttributeValues: { ':val': 8 * 60 * 60 },
+            },
+        }));
+
+        await ddbDocClient.send(
+            new TransactWriteCommand({
+                TransactItems: transactItems,
+            }),
+        );
+    }
 }

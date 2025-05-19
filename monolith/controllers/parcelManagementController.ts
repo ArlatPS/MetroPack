@@ -2,6 +2,7 @@ import { RequestHandler } from 'express';
 
 import { ParcelModel, ParcelManagementModel, TrackingModel, EventGeneratorModel } from '../models';
 import { NotFoundError } from '../errors/NotFoundError';
+import { Location } from '../helpers/locationHelpers';
 
 export class ParcelManagementController {
     private parcelModel: ParcelModel;
@@ -11,13 +12,13 @@ export class ParcelManagementController {
 
     constructor(
         parcelModel: ParcelModel,
-        parcelManagementModel: ParcelManagementModel,
         trackingModel: TrackingModel,
+        parcelManagementModel: ParcelManagementModel,
         eventGeneratorModel: EventGeneratorModel,
     ) {
         this.parcelModel = parcelModel;
-        this.parcelManagementModel = parcelManagementModel;
         this.trackingModel = trackingModel;
+        this.parcelManagementModel = parcelManagementModel;
         this.eventGeneratorModel = eventGeneratorModel;
     }
 
@@ -31,7 +32,13 @@ export class ParcelManagementController {
                 return;
             }
 
-            await this.parcelModel.register(pickupDate, pickupLocation, deliveryDate, deliveryLocation, parcelId);
+            await this.parcelModel.register(
+                pickupDate,
+                new Location(pickupLocation.longitude, pickupLocation.latitude),
+                deliveryDate,
+                new Location(deliveryLocation.longitude, deliveryLocation.latitude),
+                parcelId,
+            );
             const parcel = this.parcelModel.getDetails();
             await this.parcelManagementModel.createPickupOrder(
                 parcel.parcelId,
@@ -101,6 +108,16 @@ export class ParcelManagementController {
         try {
             await this.eventGeneratorModel.updateJobs();
             res.status(200).json({ message: 'Jobs updated successfully' });
+        } catch (err) {
+            console.error(err);
+            res.status(500).json({ message: 'Internal server error' });
+        }
+    };
+
+    public resetVehicles: RequestHandler = async (req, res) => {
+        try {
+            await this.parcelManagementModel.resetVehicles();
+            res.status(200).json({ message: 'Vehicles reset successfully' });
         } catch (err) {
             console.error(err);
             res.status(500).json({ message: 'Internal server error' });

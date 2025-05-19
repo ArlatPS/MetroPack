@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { intToUuid, uuidToInt } from '../helpers/idHelpers';
 
-export interface Vehicle {
+export interface OrsVehicle {
     id: string;
     capacity: number;
 }
@@ -29,7 +29,7 @@ interface Step {
     deliveryId?: string;
 }
 
-interface DeliveryJob {
+export interface DeliveryJob {
     steps: Step[];
     vehicleId: string;
     duration: number;
@@ -47,7 +47,7 @@ interface RouteFromOrs {
 }
 
 export async function createDeliveryJobs(
-    vehicles: Vehicle[],
+    vehicles: OrsVehicle[],
     warehouse: Warehouse,
     deliveries: Delivery[],
 ): Promise<DeliveryJob[]> {
@@ -68,7 +68,7 @@ export async function createDeliveryJobs(
                     time_windows: [warehouse.timeWindow],
                 };
             }),
-            vehicles: vehicles.map((vehicle: Vehicle) => {
+            vehicles: vehicles.map((vehicle: OrsVehicle) => {
                 const id = uuidToInt(vehicle.id);
                 uuidMap.set(id, vehicle.id);
                 return {

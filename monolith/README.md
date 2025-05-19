@@ -2,6 +2,6 @@
 
 ## Deployment
 ```bash 
-sam deploy --stack-name metro-pack-monolith --parameter-overrides KeyName=
+sam deploy --stack-name metro-pack-monolith --parameter-overrides KeyName= OrsKey=
 ```
 

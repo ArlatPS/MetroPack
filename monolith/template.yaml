@@ -5,6 +5,9 @@ Parameters:
   KeyName:
     Description: Name of an existing EC2 KeyPair
     Type: AWS::EC2::KeyPair::KeyName
+  OrsKey:
+    Type: String
+    Description: The API key for ors
 
 Resources:
   ExpressSecurityGroup:
@@ -67,7 +70,7 @@ Resources:
       IamInstanceProfile: !Ref ExpressInstanceProfile
       ImageId: ami-02b7d5b1e55a7b5f1
       UserData:
-        Fn::Base64: | 
+        Fn::Base64: !Sub |
           #!/bin/bash
           curl -sL https://rpm.nodesource.com/setup_18.x | bash -
           yum install -y nodejs unzip awscli
@@ -76,8 +79,9 @@ Resources:
           cd /home/ec2-user/app
           npm install
           npm run build
-          export VENDOR_TABLE=MonolithVendorTable
+          export VENDOR_TABLE=${MonolithVendorTable}
           export AWS_REGION=eu-central-1
+          export ORS_API_KEY=${OrsKey}
           nohup node dist/index.js > app.log 2>&1 &
 
 

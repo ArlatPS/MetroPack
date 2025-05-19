@@ -3,8 +3,8 @@ import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 
 import { VendorModel } from './models';
-import { VendorController } from './controllers';
-import { vendorRoutes } from './routes';
+import { VendorController, RoutingController } from './controllers';
+import { vendorRoutes, routingRoutes } from './routes';
 
 const app = express();
 app.use(express.json());
@@ -16,6 +16,9 @@ const vendorModel = new VendorModel(ddbDocClient);
 const vendorController = new VendorController(vendorModel);
 
 app.use('/', vendorRoutes(vendorController));
+
+const routingController = new RoutingController();
+app.use('/routing', routingRoutes(routingController));
 
 const port = 3000;
 

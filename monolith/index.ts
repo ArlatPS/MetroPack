@@ -2,9 +2,9 @@ import express from 'express';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 
-import { VendorModel, OfferModel } from './models';
-import { VendorController, RoutingController, DynamicPricingController } from './controllers';
-import { vendorRoutes, routingRoutes, dynamicPricingRoutes } from './routes';
+import { VendorModel, OfferModel, CustomerModel } from './models';
+import { VendorController, RoutingController, DynamicPricingController, BillingController } from './controllers';
+import { vendorRoutes, routingRoutes, dynamicPricingRoutes, billingRoutes } from './routes';
 
 const app = express();
 app.use(express.json());
@@ -22,6 +22,10 @@ app.use('/', routingRoutes(routingController));
 const offerModel = new OfferModel(ddbDocClient);
 const dynamicPricingController = new DynamicPricingController(offerModel, ddbDocClient);
 app.use('/', dynamicPricingRoutes(dynamicPricingController));
+
+const customerModel = new CustomerModel(ddbDocClient);
+const billingController = new BillingController(customerModel);
+app.use('/', billingRoutes(billingController));
 
 const port = 3000;
 

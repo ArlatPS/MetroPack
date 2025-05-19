@@ -54,10 +54,15 @@ Resources:
                   - dynamodb:UpdateItem
                   - dynamodb:Query
                   - dynamodb:Scan
+                  - dynamodb:BatchGetItem
+                  - dynamodb:BatchWriteItem
+                  - dynamodb:DeleteItem
                 Resource:
                   - !GetAtt MonolithVendorTable.Arn
                   - !GetAtt MonolithCityTable.Arn
                   - !GetAtt MonolithOfferTable.Arn
+                  - !GetAtt MonolithBillTable.Arn
+                  - !GetAtt MonolithOrderTable.Arn
 
   ExpressInstanceProfile:
     Type: AWS::IAM::InstanceProfile
@@ -89,6 +94,8 @@ Resources:
           export VENDOR_TABLE=${MonolithVendorTable}
           export CITY_TABLE=${MonolithCityTable}
           export OFFER_TABLE=${MonolithOfferTable}
+          export BILL_TABLE=${MonolithBillTable}
+          export ORDER_TABLE=${MonolithOrderTable}
           nohup node dist/index.js > app.log 2>&1 &
           (crontab -l 2>/dev/null; echo "0 0 * * * curl -X POST http://localhost:3000/generateCityCapacity") | crontab -
 
@@ -145,6 +152,38 @@ Resources:
       TimeToLiveSpecification:
         AttributeName: ttl
         Enabled: true
+
+  MonolithBillTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: MonolithBillTable
+      AttributeDefinitions:
+        - AttributeName: customerId
+          AttributeType: S
+        - AttributeName: month
+          AttributeType: S
+      KeySchema:
+        - AttributeName: customerId
+          KeyType: HASH
+        - AttributeName: month
+          KeyType: RANGE
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+
+  MonolithOrderTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: MonolithOrderTable
+      AttributeDefinitions:
+        - AttributeName: orderId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: orderId
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
 Outputs:
   InstancePublicIp:
     Description: Public IP of the EC2 instance

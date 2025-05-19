@@ -136,7 +136,7 @@ Resources:
       MemorySize: 256
       Timeout: 5
       Events:
-        CreatePickupOrderEventRule:
+        ParcelEvnetsToSQSEventRule:
           Type: EventBridgeRule
           Properties:
             EventBusName: !Ref EventBus
@@ -149,7 +149,6 @@ Resources:
                 - 'parcelManagementService.parcelDeliveryStarted'
                 - 'parcelManagementService.parcelDelivered'
                 - 'parcelManagementService.parcelDeliveredToWarehouse'
-                - 'parcelManagementService.parcelTransferCompleted'
       Policies:
         - SQSSendMessagePolicy:
             QueueName: !GetAtt UpdateParcelEventsQueue.QueueName

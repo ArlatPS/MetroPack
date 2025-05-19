@@ -80,7 +80,7 @@ export async function resetVehiclesCapacity(ddbDocClient: DynamoDBDocumentClient
 
     const data = await ddbDocClient.send(new ScanCommand(params));
 
-    const vehicleIds = data.Items?.map((item) => item.vehicleId as string) || [];
+    const vehicleIds = data.Items?.map((item) => item.vehicleId) || [];
 
     const chunks = chunkArray(vehicleIds, 10);
 

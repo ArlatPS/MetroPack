@@ -4,9 +4,9 @@ import { putItem } from "./dynamoDbDatasource";
 import { randomUUID } from "node:crypto";
 import { getNextWorkingDays } from "./dates";
 
-const WAREHOUSE_TABLE = "WarehouseTable";
-const VEHICLE_TABLE = "VehicleTable";
-const CITY_TABLE = "CityTable";
+const WAREHOUSE_TABLE = "MonolithWarehouseTable";
+const VEHICLE_TABLE = "MonolithVehicleTable";
+const CITY_TABLE = "MonolithCityTable";
 
 const VEHICLE_CAPACITY = 80;
 

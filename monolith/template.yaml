@@ -1,0 +1,545 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Monolith
+
+Parameters:
+  KeyName:
+    Description: Name of an existing EC2 KeyPair
+    Type: AWS::EC2::KeyPair::KeyName
+  OrsKey:
+    Type: String
+    Description: The API key for ors
+
+Resources:
+  ExpressSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Enable HTTP access
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 3000
+          ToPort: 3000
+          CidrIp: 0.0.0.0/0
+
+  ExpressInstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      Path: /
+      Policies:
+        - PolicyName: S3ReadAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource: arn:aws:s3:::metropack-builds/app.zip
+        - PolicyName: DynamoDBAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:PutItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:Query
+                  - dynamodb:Scan
+                  - dynamodb:BatchGetItem
+                  - dynamodb:BatchWriteItem
+                  - dynamodb:DeleteItem
+                Resource:
+                  - !GetAtt MonolithVendorTable.Arn
+                  - !GetAtt MonolithCityTable.Arn
+                  - !GetAtt MonolithOfferTable.Arn
+                  - !GetAtt MonolithBillTable.Arn
+                  - !GetAtt MonolithOrderTable.Arn
+                  - !GetAtt MonolithParcelTable.Arn
+                  - !GetAtt MonolithWarehouseTable.Arn
+                  - !GetAtt MonolithVehicleTable.Arn
+                  - !Sub '${MonolithVehicleTable.Arn}/index/WarehouseTypeIndex'
+                  - !GetAtt MonolithPickupOrderTable.Arn
+                  - !Sub '${MonolithPickupOrderTable.Arn}/index/WarehouseDateIndex'
+                  - !GetAtt MonolithPickupJobTable.Arn
+                  - !Sub '${MonolithPickupJobTable.Arn}/index/StatusDateIndex'
+                  - !GetAtt MonolithTransferJobTable.Arn
+                  - !Sub '${MonolithTransferJobTable.Arn}/index/StatusDateIndex'
+                  - !Sub '${MonolithTransferJobTable.Arn}/index/ConnectionDateIndex'
+                  - !GetAtt MonolithDeliveryJobTable.Arn
+                  - !Sub '${MonolithDeliveryOrderTable.Arn}/index/WarehouseDateIndex'
+                  - !GetAtt MonolithDeliveryOrderTable.Arn
+                  - !GetAtt MonolithParcelLocationTable.Arn
+                  - !GetAtt MonolithVehicleLocationTable.Arn
+                  - !GetAtt MonolithEventGeneratorVehicleTable.Arn
+                  - !GetAtt MonolithEventGeneratorJobTable.Arn
+                  - !Sub '${MonolithEventGeneratorJobTable.Arn}/index/VehicleStatusIndex'
+                  - !GetAtt MonolithBuyerTable.Arn
+
+  ExpressInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref ExpressInstanceRole
+
+  ExpressInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t2.micro
+      KeyName: !Ref KeyName
+      SecurityGroups:
+        - !Ref ExpressSecurityGroup
+      IamInstanceProfile: !Ref ExpressInstanceProfile
+      ImageId: ami-02b7d5b1e55a7b5f1
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          curl -sL https://rpm.nodesource.com/setup_18.x | bash -
+          yum install -y nodejs unzip awscli
+          aws s3 cp s3://metropack-builds/app.zip /home/ec2-user/app.zip
+          unzip /home/ec2-user/app.zip -d /home/ec2-user/app
+          cd /home/ec2-user/app
+          npm install
+          npm run build
+          export AWS_REGION=eu-central-1
+          export ORS_API_KEY=${OrsKey}
+          export VENDOR_TABLE=${MonolithVendorTable}
+          export CITY_TABLE=${MonolithCityTable}
+          export OFFER_TABLE=${MonolithOfferTable}
+          export BILL_TABLE=${MonolithBillTable}
+          export ORDER_TABLE=${MonolithOrderTable}
+          export PARCEL_TABLE=${MonolithParcelTable}
+          export WAREHOUSE_TABLE=${MonolithWarehouseTable}
+          export VEHICLE_TABLE=${MonolithVehicleTable}
+          export PICKUP_ORDER_TABLE=${MonolithPickupOrderTable}
+          export PICKUP_JOB_TABLE=${MonolithPickupJobTable}
+          export TRANSFER_JOB_TABLE=${MonolithTransferJobTable}
+          export DELIVERY_JOB_TABLE=${MonolithDeliveryJobTable}
+          export DELIVERY_ORDER_TABLE=${MonolithDeliveryOrderTable} 
+          export PARCEL_LOCATION_TABLE=${MonolithParcelLocationTable}
+          export VEHICLE_LOCATION_TABLE=${MonolithVehicleLocationTable}
+          export EVENT_GENERATOR_VEHICLE_TABLE=${MonolithEventGeneratorVehicleTable}
+          export EVENT_GENERATOR_JOB_TABLE=${MonolithEventGeneratorJobTable}
+          export BUYER_TABLE=${MonolithBuyerTable}
+          nohup node dist/index.js > app.log 2>&1 &
+          (crontab -l 2>/dev/null; echo "0 0 * * * curl -X POST http://localhost:3000/generateCityCapacity") | crontab -
+          (crontab -l 2>/dev/null; echo "0 6 * * * curl -X POST http://localhost:3000/prepareJobs") | crontab -
+          (crontab -l 2>/dev/null; echo "0 5 * * * curl -X POST http://localhost:3000/resetVehicles") | crontab -
+          (crontab -l 2>/dev/null; echo "* * * * * curl -X POST http://localhost:3000/updateJobs") | crontab -
+
+  MonolithVendorTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: MonolithVendorTable
+      AttributeDefinitions:
+        - AttributeName: vendorId
+          AttributeType: S
+        - AttributeName: eventOrder
+          AttributeType: N
+      KeySchema:
+        - AttributeName: vendorId
+          KeyType: HASH
+        - AttributeName: eventOrder
+          KeyType: RANGE
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+
+  MonolithCityTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: MonolithCityTable
+      AttributeDefinitions:
+        - AttributeName: cityCodename
+          AttributeType: S
+        - AttributeName: date
+          AttributeType: S
+      KeySchema:
+        - AttributeName: cityCodename
+          KeyType: HASH
+        - AttributeName: date
+          KeyType: RANGE
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+
+  MonolithOfferTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: MonolithOfferTable
+      AttributeDefinitions:
+        - AttributeName: offerId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: offerId
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+
+  MonolithBillTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: MonolithBillTable
+      AttributeDefinitions:
+        - AttributeName: customerId
+          AttributeType: S
+        - AttributeName: month
+          AttributeType: S
+      KeySchema:
+        - AttributeName: customerId
+          KeyType: HASH
+        - AttributeName: month
+          KeyType: RANGE
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+
+  MonolithOrderTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: MonolithOrderTable
+      AttributeDefinitions:
+        - AttributeName: orderId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: orderId
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+
+  MonolithParcelTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: MonolithParcelTable
+      AttributeDefinitions:
+        - AttributeName: parcelId
+          AttributeType: S
+        - AttributeName: eventOrder
+          AttributeType: N
+      KeySchema:
+        - AttributeName: parcelId
+          KeyType: HASH
+        - AttributeName: eventOrder
+          KeyType: RANGE
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+
+  MonolithWarehouseTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: MonolithWarehouseTable
+      AttributeDefinitions:
+        - AttributeName: warehouseId
+          AttributeType: S
+        - AttributeName: status
+          AttributeType: S
+      KeySchema:
+        - AttributeName: warehouseId
+          KeyType: HASH
+        - AttributeName: status
+          KeyType: RANGE
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+
+  MonolithVehicleTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: MonolithVehicleTable
+      AttributeDefinitions:
+        - AttributeName: vehicleId
+          AttributeType: S
+        - AttributeName: warehouseId
+          AttributeType: S
+        - AttributeName: type
+          AttributeType: S
+      KeySchema:
+        - AttributeName: vehicleId
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+      GlobalSecondaryIndexes:
+        - IndexName: WarehouseTypeIndex
+          KeySchema:
+            - AttributeName: warehouseId
+              KeyType: HASH
+            - AttributeName: type
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+          ProvisionedThroughput:
+            ReadCapacityUnits: 1
+            WriteCapacityUnits: 1
+
+  MonolithPickupOrderTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: MonolithPickupOrderTable
+      AttributeDefinitions:
+        - AttributeName: parcelId
+          AttributeType: S
+        - AttributeName: warehouseId
+          AttributeType: S
+        - AttributeName: date
+          AttributeType: S
+      KeySchema:
+        - AttributeName: parcelId
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+      GlobalSecondaryIndexes:
+        - IndexName: WarehouseDateIndex
+          KeySchema:
+            - AttributeName: warehouseId
+              KeyType: HASH
+            - AttributeName: date
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+          ProvisionedThroughput:
+            ReadCapacityUnits: 1
+            WriteCapacityUnits: 1
+
+  MonolithPickupJobTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: MonolithPickupJobTable
+      AttributeDefinitions:
+        - AttributeName: jobId
+          AttributeType: S
+        - AttributeName: status
+          AttributeType: S
+        - AttributeName: date
+          AttributeType: S
+      KeySchema:
+        - AttributeName: jobId
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+      GlobalSecondaryIndexes:
+        - IndexName: StatusDateIndex
+          KeySchema:
+            - AttributeName: status
+              KeyType: HASH
+            - AttributeName: date
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+          ProvisionedThroughput:
+            ReadCapacityUnits: 1
+            WriteCapacityUnits: 1
+
+  MonolithTransferJobTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: MonolithTransferJobTable
+      AttributeDefinitions:
+        - AttributeName: jobId
+          AttributeType: S
+        - AttributeName: status
+          AttributeType: S
+        - AttributeName: date
+          AttributeType: S
+        - AttributeName: connection
+          AttributeType: S
+      KeySchema:
+        - AttributeName: jobId
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+      GlobalSecondaryIndexes:
+        - IndexName: StatusDateIndex
+          KeySchema:
+            - AttributeName: status
+              KeyType: HASH
+            - AttributeName: date
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+          ProvisionedThroughput:
+            ReadCapacityUnits: 1
+            WriteCapacityUnits: 1
+        - IndexName: ConnectionDateIndex
+          KeySchema:
+            - AttributeName: connection
+              KeyType: HASH
+            - AttributeName: date
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+          ProvisionedThroughput:
+            ReadCapacityUnits: 1
+            WriteCapacityUnits: 1
+
+  MonolithDeliveryJobTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: MonolithDeliveryJobTable
+      AttributeDefinitions:
+        - AttributeName: jobId
+          AttributeType: S
+        - AttributeName: status
+          AttributeType: S
+        - AttributeName: date
+          AttributeType: S
+      KeySchema:
+        - AttributeName: jobId
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+      GlobalSecondaryIndexes:
+        - IndexName: StatusDateIndex
+          KeySchema:
+            - AttributeName: status
+              KeyType: HASH
+            - AttributeName: date
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+          ProvisionedThroughput:
+            ReadCapacityUnits: 1
+            WriteCapacityUnits: 1
+
+  MonolithDeliveryOrderTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: MonolithDeliveryOrderTable
+      AttributeDefinitions:
+        - AttributeName: parcelId
+          AttributeType: S
+        - AttributeName: warehouseId
+          AttributeType: S
+        - AttributeName: date
+          AttributeType: S
+      KeySchema:
+        - AttributeName: parcelId
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+      GlobalSecondaryIndexes:
+        - IndexName: WarehouseDateIndex
+          KeySchema:
+            - AttributeName: warehouseId
+              KeyType: HASH
+            - AttributeName: date
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+          ProvisionedThroughput:
+            ReadCapacityUnits: 1
+            WriteCapacityUnits: 1
+
+  MonolithParcelLocationTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: MonolithParcelLocationTable
+      AttributeDefinitions:
+        - AttributeName: parcelId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: parcelId
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+
+  MonolithVehicleLocationTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: MonolithVehicleLocationTable
+      AttributeDefinitions:
+        - AttributeName: vehicleId
+          AttributeType: S
+        - AttributeName: jobId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: vehicleId
+          KeyType: HASH
+        - AttributeName: jobId
+          KeyType: RANGE
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+
+  MonolithEventGeneratorVehicleTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: MonolithEventGeneratorVehicleTable
+      AttributeDefinitions:
+        - AttributeName: vehicleId
+          AttributeType: S
+
+      KeySchema:
+        - AttributeName: vehicleId
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+
+  MonolithEventGeneratorJobTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: MonolithEventGeneratorJobTable
+      AttributeDefinitions:
+        - AttributeName: jobId
+          AttributeType: S
+        - AttributeName: vehicleId
+          AttributeType: S
+        - AttributeName: status
+          AttributeType: S
+      KeySchema:
+        - AttributeName: jobId
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+      GlobalSecondaryIndexes:
+        - IndexName: VehicleStatusIndex
+          KeySchema:
+            - AttributeName: vehicleId
+              KeyType: HASH
+            - AttributeName: status
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+          ProvisionedThroughput:
+            ReadCapacityUnits: 1
+            WriteCapacityUnits: 1
+
+  MonolithBuyerTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: MonolithBuyerTable
+      AttributeDefinitions:
+        - AttributeName: email
+          AttributeType: S
+      KeySchema:
+        - AttributeName: email
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+Outputs:
+  InstancePublicIp:
+    Description: Public IP of the EC2 instance
+    Value: !GetAtt ExpressInstance.PublicIp

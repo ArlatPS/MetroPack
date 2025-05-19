@@ -1,5 +1,8 @@
 # CHANGELOG
 
+## [0.10.0] - 2025-05-19
+- Implementation on monolithic architecture.
+
 ## [0.9.0] - 2025-05-18
 - Load testing in Artillery.
 

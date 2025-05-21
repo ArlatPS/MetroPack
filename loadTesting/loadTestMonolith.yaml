@@ -1,0 +1,70 @@
+config:
+  target: https://<EC2_INSTANCE_IP>
+  phases:
+    - duration: 5
+      arrivalRate: 1
+      name: "Minimal"
+  plugins:
+    metrics-by-endpoint: {}
+  processor: "./processor.js"
+
+scenarios:
+  - name: 'Offer not accepted'
+    weight: 4
+    flow:
+      - post:
+          url: "/createOffer"
+          json:
+            pickupCityCodename: "{{ pickupCityCodename }}"
+            deliveryCityCodename: "{{ deliveryCityCodename }}"
+          beforeRequest: "generateOfferRequest"
+          afterResponse: "extractOfferId"
+
+  - name: 'Offer accepted'
+    weight: 1
+    flow:
+      - post:
+          url: "/createOffer"
+          json:
+            pickupCityCodename: "{{ pickupCityCodename }}"
+            deliveryCityCodename: "{{ deliveryCityCodename }}"
+          beforeRequest: "generateOfferRequest"
+          afterResponse: "extractOfferId"
+
+      - get:
+          url: "vendor/{{ vendorId }}"
+          beforeRequest: "generateGetVendorRequest"
+          afterResponse: "extractVendorLocation"
+
+      - post:
+          url: "/acceptOffer"
+          json:
+            offerId: "{{ offerId }}"
+            email: "{{ email }}"
+            vendorId: "{{ vendorId }}"
+            pickupLocation:
+              longitude: "{{ pickupLocationLongitude }}"
+              latitude: "{{ pickupLocationLatitude }}"
+            deliveryLocation:
+              longitude: "{{ deliveryLocationLongitude }}"
+              latitude: "{{ deliveryLocationLatitude }}"
+          beforeRequest: "generateAcceptOfferRequest"
+          afterResponse: "extractParcelId"
+
+      - get:
+          url: "/parcel/{{ parcelId }}"
+
+      - get:
+          url: "/buyer/{{ email }}"
+
+      - post:
+          url: "/bills"
+          json:
+              vendorId: "{{ vendorId }}"
+          afterResponse: "extractBillMonth"
+
+      - post:
+          url: "/bill"
+          json:
+            vendorId: "{{ vendorId }}"
+            month: "{{ month }}"

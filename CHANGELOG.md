@@ -1,5 +1,8 @@
 # CHANGELOG
 
+## [0.11.1] - 2025-05-21
+- Updated dynamoDB tables to use on demand billing mode.
+
 ## [0.11.0] - 2025-05-21
 - `Vendor` has location and load testing for monolith.
 

@@ -233,9 +233,7 @@ Resources:
           KeyType: HASH
         - AttributeName: month
           KeyType: RANGE
-      ProvisionedThroughput:
-        ReadCapacityUnits: 1
-        WriteCapacityUnits: 1
+      BillingMode: PAY_PER_REQUEST
 
   OrderTable:
     Type: AWS::DynamoDB::Table
@@ -247,9 +245,7 @@ Resources:
       KeySchema:
         - AttributeName: orderId
           KeyType: HASH
-      ProvisionedThroughput:
-        ReadCapacityUnits: 1
-        WriteCapacityUnits: 1
+      BillingMode: PAY_PER_REQUEST
 
 Outputs:
   BillingServiceApiId:

@@ -1,0 +1,31 @@
+minimal:
+  - duration: 5
+    arrivalRate: 1
+    name: "Minimal"
+
+small:
+    - duration: 60
+      arrivalRate: 1
+      rampTo: 5
+      name: "Warmup"
+    - duration: 300
+      arrivalRate: 5
+      name: "Steady"
+
+medium:
+    - duration: 60
+      arrivalRate: 1
+      rampTo: 10
+      name: "Warmup"
+    - duration: 300
+      arrivalRate: 10
+      name: "Steady"
+
+large:
+    - duration: 60
+      arrivalRate: 1
+      rampTo: 100
+      name: "Warmup"
+    - duration: 300
+      arrivalRate: 100
+      name: "Steady"

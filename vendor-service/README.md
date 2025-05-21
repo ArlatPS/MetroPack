@@ -8,7 +8,7 @@ sam validate
 sam build
 ```
 ```bash 
-sam deploy --stack-name vendor-service --guided
+sam deploy --stack-name vendor-service
 ```
 ```bash 
 sam sync --stack-name vendor-service --watch

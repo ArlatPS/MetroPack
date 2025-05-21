@@ -10,17 +10,22 @@ export const handler = async (event: APIGatewayProxyEvent, context: Context): Pr
     try {
         const body = JSON.parse(event.body || '{}');
 
-        if (typeof body.name !== 'string' || typeof body.email !== 'string') {
+        if (
+            typeof body.name !== 'string' ||
+            typeof body.email !== 'string' ||
+            typeof body.location.longitude !== 'number' ||
+            typeof body.location.latitude !== 'number'
+        ) {
             return {
                 statusCode: 400,
                 body: JSON.stringify({
-                    message: 'name and email are required',
+                    message: 'name, email and location are required',
                 }),
             };
         }
 
         const vendor = new Vendor(ddbDocClient, context);
-        await vendor.register(body.name, body.email);
+        await vendor.register(body.name, body.email, body.location.longitude, body.location.latitude);
 
         return {
             statusCode: 200,

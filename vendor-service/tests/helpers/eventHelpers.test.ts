@@ -22,7 +22,7 @@ describe('Event Helpers', () => {
         const name = 'Test Vendor';
         const email = 'test@vendor.com';
 
-        const event = createVendorRegisteredEvent(vendorId, name, email, mockContext);
+        const event = createVendorRegisteredEvent(vendorId, name, email, 10, 10, mockContext);
 
         expect(event).toEqual({
             version: '1',
@@ -45,6 +45,10 @@ describe('Event Helpers', () => {
                     vendorId,
                     name,
                     email,
+                    location: {
+                        longitude: 10,
+                        latitude: 10,
+                    },
                 },
             },
         });

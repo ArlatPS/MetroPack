@@ -1,5 +1,8 @@
 # CHANGELOG
 
+## [0.11.0] - 2025-05-21
+- `Vendor` has location and load testing for monolith.
+
 ## [0.10.0] - 2025-05-19
 - Implementation on monolithic architecture.
 

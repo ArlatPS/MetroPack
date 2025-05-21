@@ -31,6 +31,10 @@ export interface VendorRegisteredEvent extends VendorEventBase {
             vendorId: string;
             name: string;
             email: string;
+            location: {
+                longitude: number;
+                latitude: number;
+            };
         };
     };
 }
@@ -44,6 +48,10 @@ export interface VendorDetailsChangedEvent extends VendorEventBase {
             vendorId: string;
             name?: string;
             email?: string;
+            location?: {
+                longitude: number;
+                latitude: number;
+            };
         };
     };
 }
@@ -54,6 +62,10 @@ export class Vendor {
     private vendorId = '';
     private email = '';
     private name = '';
+    private location = {
+        longitude: 0,
+        latitude: 0,
+    };
     private readonly ddbDocClient: DynamoDBDocumentClient;
     private readonly context: Context;
     private events: VendorEvent[] = [];
@@ -63,17 +75,23 @@ export class Vendor {
         this.context = context;
     }
 
-    public getDetails(): { vendorId: string; email: string; name: string } {
+    public getDetails(): {
+        vendorId: string;
+        email: string;
+        name: string;
+        location: { longitude: number; latitude: number };
+    } {
         return {
             vendorId: this.vendorId,
             email: this.email,
             name: this.name,
+            location: this.location,
         };
     }
 
-    public async register(name: string, email: string): Promise<void> {
+    public async register(name: string, email: string, longitude: number, latitude: number): Promise<void> {
         const vendorId = randomUUID();
-        const event = createVendorRegisteredEvent(vendorId, name, email, this.context);
+        const event = createVendorRegisteredEvent(vendorId, name, email, longitude, latitude, this.context);
 
         await putVendorEvent(vendorId, 0, event, this.ddbDocClient);
 
@@ -88,12 +106,15 @@ export class Vendor {
         this.projectEvents(events);
     }
 
-    public async changeDetails(name: string, email: string): Promise<void> {
+    public async changeDetails(name: string, email: string, longitude: number, latitude: number): Promise<void> {
         if (!this.vendorId) {
             throw new Error('Vendor state is not loaded');
         }
 
-        const event = createVendorDetailsChangedEvent(this.vendorId, this.context, name, email);
+        const event = createVendorDetailsChangedEvent(this.vendorId, this.context, name, email, {
+            longitude,
+            latitude,
+        });
 
         await putVendorEvent(this.vendorId, this.events.length, event, this.ddbDocClient);
 
@@ -119,6 +140,7 @@ export class Vendor {
         this.vendorId = event.detail.data.vendorId;
         this.email = event.detail.data.email;
         this.name = event.detail.data.name;
+        this.location = event.detail.data.location;
     }
 
     private applyVendorDetailsChanged(event: VendorDetailsChangedEvent): void {
@@ -127,6 +149,10 @@ export class Vendor {
         }
         if (event.detail.data.name) {
             this.name = event.detail.data.name;
+        }
+
+        if (event.detail.data.location) {
+            this.location = event.detail.data.location;
         }
     }
 }

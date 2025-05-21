@@ -6,6 +6,8 @@ export function createVendorRegisteredEvent(
     vendorId: string,
     name: string,
     email: string,
+    longitude: number,
+    latitude: number,
     context: Context,
 ): VendorRegisteredEvent {
     return {
@@ -29,6 +31,10 @@ export function createVendorRegisteredEvent(
                 vendorId,
                 name,
                 email,
+                location: {
+                    longitude,
+                    latitude,
+                },
             },
         },
     };
@@ -39,6 +45,10 @@ export function createVendorDetailsChangedEvent(
     context: Context,
     name?: string,
     email?: string,
+    location?: {
+        longitude: number;
+        latitude: number;
+    },
 ): VendorDetailsChangedEvent {
     const event: VendorDetailsChangedEvent = {
         version: '1',
@@ -64,5 +74,6 @@ export function createVendorDetailsChangedEvent(
     };
     name && (event.detail.data.name = name);
     email && (event.detail.data.email = email);
+    location && (event.detail.data.location = location);
     return event;
 }

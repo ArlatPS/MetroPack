@@ -1,4 +1,3 @@
-const { randomUUID } = require('node:crypto');
 const cities = [
     {
         cityCodename: 'pl_kraków',
@@ -137,6 +136,7 @@ function extractOfferId(req, res, context, events, done) {
 function generateGetVendorRequest(req, userContext, events, done) {
     const city = cities.find((city) => city.cityCodename === userContext.vars.pickupCityCodename);
     userContext.vars.vendorId = city.vendors[Math.floor(Math.random() * city.vendors.length)];
+    done();
 }
 
 function extractVendorLocation(req, res, context, events, done) {

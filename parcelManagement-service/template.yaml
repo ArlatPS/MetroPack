@@ -468,9 +468,7 @@ Resources:
           KeyType: HASH
         - AttributeName: eventOrder
           KeyType: RANGE
-      ProvisionedThroughput:
-        ReadCapacityUnits: 1
-        WriteCapacityUnits: 1
+      BillingMode: PAY_PER_REQUEST
 
   WarehouseTable:
     Type: AWS::DynamoDB::Table
@@ -486,9 +484,7 @@ Resources:
           KeyType: HASH
         - AttributeName: status
           KeyType: RANGE
-      ProvisionedThroughput:
-        ReadCapacityUnits: 1
-        WriteCapacityUnits: 1
+      BillingMode: PAY_PER_REQUEST
 
   VehicleTable:
     Type: AWS::DynamoDB::Table
@@ -504,9 +500,7 @@ Resources:
       KeySchema:
         - AttributeName: vehicleId
           KeyType: HASH
-      ProvisionedThroughput:
-        ReadCapacityUnits: 1
-        WriteCapacityUnits: 1
+      BillingMode: PAY_PER_REQUEST
       GlobalSecondaryIndexes:
         - IndexName: WarehouseTypeIndex
           KeySchema:
@@ -516,9 +510,6 @@ Resources:
               KeyType: RANGE
           Projection:
             ProjectionType: ALL
-          ProvisionedThroughput:
-            ReadCapacityUnits: 1
-            WriteCapacityUnits: 1
 
   PickupOrderTable:
     Type: AWS::DynamoDB::Table
@@ -534,9 +525,7 @@ Resources:
       KeySchema:
         - AttributeName: parcelId
           KeyType: HASH
-      ProvisionedThroughput:
-        ReadCapacityUnits: 1
-        WriteCapacityUnits: 1
+      BillingMode: PAY_PER_REQUEST
       GlobalSecondaryIndexes:
         - IndexName: WarehouseDateIndex
           KeySchema:
@@ -546,9 +535,6 @@ Resources:
               KeyType: RANGE
           Projection:
             ProjectionType: ALL
-          ProvisionedThroughput:
-            ReadCapacityUnits: 1
-            WriteCapacityUnits: 1
 
   PickupJobTable:
     Type: AWS::DynamoDB::Table
@@ -564,9 +550,7 @@ Resources:
       KeySchema:
         - AttributeName: jobId
           KeyType: HASH
-      ProvisionedThroughput:
-        ReadCapacityUnits: 1
-        WriteCapacityUnits: 1
+      BillingMode: PAY_PER_REQUEST
       GlobalSecondaryIndexes:
         - IndexName: StatusDateIndex
           KeySchema:
@@ -576,9 +560,6 @@ Resources:
               KeyType: RANGE
           Projection:
             ProjectionType: ALL
-          ProvisionedThroughput:
-            ReadCapacityUnits: 1
-            WriteCapacityUnits: 1
 
   TransferJobTable:
     Type: AWS::DynamoDB::Table
@@ -596,9 +577,7 @@ Resources:
       KeySchema:
         - AttributeName: jobId
           KeyType: HASH
-      ProvisionedThroughput:
-        ReadCapacityUnits: 1
-        WriteCapacityUnits: 1
+      BillingMode: PAY_PER_REQUEST
       GlobalSecondaryIndexes:
         - IndexName: StatusDateIndex
           KeySchema:
@@ -608,9 +587,7 @@ Resources:
               KeyType: RANGE
           Projection:
             ProjectionType: ALL
-          ProvisionedThroughput:
-            ReadCapacityUnits: 1
-            WriteCapacityUnits: 1
+          
         - IndexName: ConnectionDateIndex
           KeySchema:
             - AttributeName: connection
@@ -619,9 +596,6 @@ Resources:
               KeyType: RANGE
           Projection:
               ProjectionType: ALL
-          ProvisionedThroughput:
-              ReadCapacityUnits: 1
-              WriteCapacityUnits: 1
 
   DeliveryJobTable:
     Type: AWS::DynamoDB::Table
@@ -637,9 +611,7 @@ Resources:
       KeySchema:
         - AttributeName: jobId
           KeyType: HASH
-      ProvisionedThroughput:
-        ReadCapacityUnits: 1
-        WriteCapacityUnits: 1
+      BillingMode: PAY_PER_REQUEST
       GlobalSecondaryIndexes:
         - IndexName: StatusDateIndex
           KeySchema:
@@ -649,9 +621,6 @@ Resources:
               KeyType: RANGE
           Projection:
             ProjectionType: ALL
-          ProvisionedThroughput:
-            ReadCapacityUnits: 1
-            WriteCapacityUnits: 1
 
   DeliveryOrderTable:
     Type: AWS::DynamoDB::Table
@@ -667,9 +636,7 @@ Resources:
       KeySchema:
         - AttributeName: parcelId
           KeyType: HASH
-      ProvisionedThroughput:
-        ReadCapacityUnits: 1
-        WriteCapacityUnits: 1
+      BillingMode: PAY_PER_REQUEST
       GlobalSecondaryIndexes:
         - IndexName: WarehouseDateIndex
           KeySchema:
@@ -679,9 +646,6 @@ Resources:
               KeyType: RANGE
           Projection:
             ProjectionType: ALL
-          ProvisionedThroughput:
-            ReadCapacityUnits: 1
-            WriteCapacityUnits: 1
 
   # On schedule functions
   ResetVehiclesFunction:
@@ -851,9 +815,7 @@ Resources:
       KeySchema:
         - AttributeName: parcelId
           KeyType: HASH
-      ProvisionedThroughput:
-        ReadCapacityUnits: 1
-        WriteCapacityUnits: 1
+      BillingMode: PAY_PER_REQUEST
 
   VehicleLocationTable:
     Type: AWS::DynamoDB::Table
@@ -869,9 +831,7 @@ Resources:
           KeyType: HASH
         - AttributeName: jobId
           KeyType: RANGE
-      ProvisionedThroughput:
-        ReadCapacityUnits: 1
-        WriteCapacityUnits: 1
+      BillingMode: PAY_PER_REQUEST
 
   # EVENT GENERATOR SERVICE
   EventGeneratorProcessJobsEventsQueue:
@@ -963,8 +923,7 @@ Resources:
         ScheduleEvent:
           Type: Schedule
           Properties:
-            Schedule: cron(0 5 * * ? *)
-#            Schedule: cron(* * * * ? *)
+            Schedule: cron(* * * * ? *)
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref EventGeneratorJobTable
@@ -999,13 +958,10 @@ Resources:
       AttributeDefinitions:
         - AttributeName: vehicleId
           AttributeType: S
-
       KeySchema:
         - AttributeName: vehicleId
           KeyType: HASH
-      ProvisionedThroughput:
-        ReadCapacityUnits: 1
-        WriteCapacityUnits: 1
+      BillingMode: PAY_PER_REQUEST
 
   EventGeneratorJobTable:
     Type: AWS::DynamoDB::Table
@@ -1021,9 +977,7 @@ Resources:
       KeySchema:
         - AttributeName: jobId
           KeyType: HASH
-      ProvisionedThroughput:
-        ReadCapacityUnits: 1
-        WriteCapacityUnits: 1
+      BillingMode: PAY_PER_REQUEST
       GlobalSecondaryIndexes:
         - IndexName: VehicleStatusIndex
           KeySchema:
@@ -1033,9 +987,6 @@ Resources:
               KeyType: RANGE
           Projection:
             ProjectionType: ALL
-          ProvisionedThroughput:
-            ReadCapacityUnits: 1
-            WriteCapacityUnits: 1
 
 Outputs:
   ParcelManagementServiceApiId:

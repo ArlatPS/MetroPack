@@ -149,9 +149,7 @@ Resources:
           KeyType: HASH
         - AttributeName: eventOrder
           KeyType: RANGE
-      ProvisionedThroughput:
-        ReadCapacityUnits: 1
-        WriteCapacityUnits: 1
+      BillingMode: PAY_PER_REQUEST
 
   MonolithCityTable:
     Type: AWS::DynamoDB::Table
@@ -167,9 +165,7 @@ Resources:
           KeyType: HASH
         - AttributeName: date
           KeyType: RANGE
-      ProvisionedThroughput:
-        ReadCapacityUnits: 1
-        WriteCapacityUnits: 1
+      BillingMode: PAY_PER_REQUEST
 
   MonolithOfferTable:
     Type: AWS::DynamoDB::Table
@@ -181,9 +177,7 @@ Resources:
       KeySchema:
         - AttributeName: offerId
           KeyType: HASH
-      ProvisionedThroughput:
-        ReadCapacityUnits: 1
-        WriteCapacityUnits: 1
+      BillingMode: PAY_PER_REQUEST
       TimeToLiveSpecification:
         AttributeName: ttl
         Enabled: true
@@ -202,9 +196,7 @@ Resources:
           KeyType: HASH
         - AttributeName: month
           KeyType: RANGE
-      ProvisionedThroughput:
-        ReadCapacityUnits: 1
-        WriteCapacityUnits: 1
+      BillingMode: PAY_PER_REQUEST
 
   MonolithOrderTable:
     Type: AWS::DynamoDB::Table
@@ -216,9 +208,7 @@ Resources:
       KeySchema:
         - AttributeName: orderId
           KeyType: HASH
-      ProvisionedThroughput:
-        ReadCapacityUnits: 1
-        WriteCapacityUnits: 1
+      BillingMode: PAY_PER_REQUEST
 
   MonolithParcelTable:
     Type: AWS::DynamoDB::Table
@@ -234,9 +224,7 @@ Resources:
           KeyType: HASH
         - AttributeName: eventOrder
           KeyType: RANGE
-      ProvisionedThroughput:
-        ReadCapacityUnits: 1
-        WriteCapacityUnits: 1
+      BillingMode: PAY_PER_REQUEST
 
   MonolithWarehouseTable:
     Type: AWS::DynamoDB::Table
@@ -252,9 +240,7 @@ Resources:
           KeyType: HASH
         - AttributeName: status
           KeyType: RANGE
-      ProvisionedThroughput:
-        ReadCapacityUnits: 1
-        WriteCapacityUnits: 1
+      BillingMode: PAY_PER_REQUEST
 
   MonolithVehicleTable:
     Type: AWS::DynamoDB::Table
@@ -270,9 +256,7 @@ Resources:
       KeySchema:
         - AttributeName: vehicleId
           KeyType: HASH
-      ProvisionedThroughput:
-        ReadCapacityUnits: 1
-        WriteCapacityUnits: 1
+      BillingMode: PAY_PER_REQUEST
       GlobalSecondaryIndexes:
         - IndexName: WarehouseTypeIndex
           KeySchema:
@@ -282,9 +266,6 @@ Resources:
               KeyType: RANGE
           Projection:
             ProjectionType: ALL
-          ProvisionedThroughput:
-            ReadCapacityUnits: 1
-            WriteCapacityUnits: 1
 
   MonolithPickupOrderTable:
     Type: AWS::DynamoDB::Table
@@ -300,9 +281,7 @@ Resources:
       KeySchema:
         - AttributeName: parcelId
           KeyType: HASH
-      ProvisionedThroughput:
-        ReadCapacityUnits: 1
-        WriteCapacityUnits: 1
+      BillingMode: PAY_PER_REQUEST
       GlobalSecondaryIndexes:
         - IndexName: WarehouseDateIndex
           KeySchema:
@@ -312,9 +291,6 @@ Resources:
               KeyType: RANGE
           Projection:
             ProjectionType: ALL
-          ProvisionedThroughput:
-            ReadCapacityUnits: 1
-            WriteCapacityUnits: 1
 
   MonolithPickupJobTable:
     Type: AWS::DynamoDB::Table
@@ -330,9 +306,7 @@ Resources:
       KeySchema:
         - AttributeName: jobId
           KeyType: HASH
-      ProvisionedThroughput:
-        ReadCapacityUnits: 1
-        WriteCapacityUnits: 1
+      BillingMode: PAY_PER_REQUEST
       GlobalSecondaryIndexes:
         - IndexName: StatusDateIndex
           KeySchema:
@@ -342,9 +316,6 @@ Resources:
               KeyType: RANGE
           Projection:
             ProjectionType: ALL
-          ProvisionedThroughput:
-            ReadCapacityUnits: 1
-            WriteCapacityUnits: 1
 
   MonolithTransferJobTable:
     Type: AWS::DynamoDB::Table
@@ -362,9 +333,7 @@ Resources:
       KeySchema:
         - AttributeName: jobId
           KeyType: HASH
-      ProvisionedThroughput:
-        ReadCapacityUnits: 1
-        WriteCapacityUnits: 1
+      BillingMode: PAY_PER_REQUEST
       GlobalSecondaryIndexes:
         - IndexName: StatusDateIndex
           KeySchema:
@@ -374,9 +343,6 @@ Resources:
               KeyType: RANGE
           Projection:
             ProjectionType: ALL
-          ProvisionedThroughput:
-            ReadCapacityUnits: 1
-            WriteCapacityUnits: 1
         - IndexName: ConnectionDateIndex
           KeySchema:
             - AttributeName: connection
@@ -385,9 +351,6 @@ Resources:
               KeyType: RANGE
           Projection:
             ProjectionType: ALL
-          ProvisionedThroughput:
-            ReadCapacityUnits: 1
-            WriteCapacityUnits: 1
 
   MonolithDeliveryJobTable:
     Type: AWS::DynamoDB::Table
@@ -403,9 +366,7 @@ Resources:
       KeySchema:
         - AttributeName: jobId
           KeyType: HASH
-      ProvisionedThroughput:
-        ReadCapacityUnits: 1
-        WriteCapacityUnits: 1
+      BillingMode: PAY_PER_REQUEST
       GlobalSecondaryIndexes:
         - IndexName: StatusDateIndex
           KeySchema:
@@ -415,9 +376,6 @@ Resources:
               KeyType: RANGE
           Projection:
             ProjectionType: ALL
-          ProvisionedThroughput:
-            ReadCapacityUnits: 1
-            WriteCapacityUnits: 1
 
   MonolithDeliveryOrderTable:
     Type: AWS::DynamoDB::Table
@@ -433,9 +391,7 @@ Resources:
       KeySchema:
         - AttributeName: parcelId
           KeyType: HASH
-      ProvisionedThroughput:
-        ReadCapacityUnits: 1
-        WriteCapacityUnits: 1
+      BillingMode: PAY_PER_REQUEST
       GlobalSecondaryIndexes:
         - IndexName: WarehouseDateIndex
           KeySchema:
@@ -445,9 +401,6 @@ Resources:
               KeyType: RANGE
           Projection:
             ProjectionType: ALL
-          ProvisionedThroughput:
-            ReadCapacityUnits: 1
-            WriteCapacityUnits: 1
 
   MonolithParcelLocationTable:
     Type: AWS::DynamoDB::Table
@@ -459,9 +412,7 @@ Resources:
       KeySchema:
         - AttributeName: parcelId
           KeyType: HASH
-      ProvisionedThroughput:
-        ReadCapacityUnits: 1
-        WriteCapacityUnits: 1
+      BillingMode: PAY_PER_REQUEST
 
   MonolithVehicleLocationTable:
     Type: AWS::DynamoDB::Table
@@ -477,9 +428,7 @@ Resources:
           KeyType: HASH
         - AttributeName: jobId
           KeyType: RANGE
-      ProvisionedThroughput:
-        ReadCapacityUnits: 1
-        WriteCapacityUnits: 1
+      BillingMode: PAY_PER_REQUEST
 
   MonolithEventGeneratorVehicleTable:
     Type: AWS::DynamoDB::Table
@@ -488,13 +437,10 @@ Resources:
       AttributeDefinitions:
         - AttributeName: vehicleId
           AttributeType: S
-
       KeySchema:
         - AttributeName: vehicleId
           KeyType: HASH
-      ProvisionedThroughput:
-        ReadCapacityUnits: 1
-        WriteCapacityUnits: 1
+      BillingMode: PAY_PER_REQUEST
 
   MonolithEventGeneratorJobTable:
     Type: AWS::DynamoDB::Table
@@ -510,9 +456,7 @@ Resources:
       KeySchema:
         - AttributeName: jobId
           KeyType: HASH
-      ProvisionedThroughput:
-        ReadCapacityUnits: 1
-        WriteCapacityUnits: 1
+      BillingMode: PAY_PER_REQUEST
       GlobalSecondaryIndexes:
         - IndexName: VehicleStatusIndex
           KeySchema:
@@ -522,9 +466,6 @@ Resources:
               KeyType: RANGE
           Projection:
             ProjectionType: ALL
-          ProvisionedThroughput:
-            ReadCapacityUnits: 1
-            WriteCapacityUnits: 1
 
   MonolithBuyerTable:
     Type: AWS::DynamoDB::Table
@@ -536,9 +477,8 @@ Resources:
       KeySchema:
         - AttributeName: email
           KeyType: HASH
-      ProvisionedThroughput:
-        ReadCapacityUnits: 1
-        WriteCapacityUnits: 1
+      BillingMode: PAY_PER_REQUEST
+
 Outputs:
   InstancePublicIp:
     Description: Public IP of the EC2 instance

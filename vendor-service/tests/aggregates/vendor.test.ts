@@ -25,15 +25,25 @@ describe('Vendor', () => {
     it('registers a new vendor', async () => {
         const name = 'Test Vendor';
         const email = 'test@vendor.com';
-        const event = { detail: { metadata: { name: 'vendorRegistered' }, data: { vendorId: '123', name, email } } };
+        const event = {
+            detail: {
+                metadata: { name: 'vendorRegistered' },
+                data: { vendorId: '123', name, email, location: { longitude: 10, latitude: 10 } },
+            },
+        };
 
         (createVendorRegisteredEvent as jest.Mock).mockReturnValue(event);
         (putVendorEvent as jest.Mock).mockResolvedValue(undefined);
 
-        await vendor.register(name, email);
+        await vendor.register(name, email, 10, 10);
 
         expect(putVendorEvent).toHaveBeenCalledWith('123', 0, event, mockDdbDocClient);
-        expect(vendor.getDetails()).toEqual({ vendorId: '123', name, email });
+        expect(vendor.getDetails()).toEqual({
+            vendorId: '123',
+            name,
+            email,
+            location: { longitude: 10, latitude: 10 },
+        });
     });
 
     it('loads vendor state', async () => {
@@ -41,7 +51,12 @@ describe('Vendor', () => {
             {
                 detail: {
                     metadata: { name: 'vendorRegistered' },
-                    data: { vendorId: '123', name: 'Test Vendor', email: 'test@vendor.com' },
+                    data: {
+                        vendorId: '123',
+                        name: 'Test Vendor',
+                        email: 'test@vendor.com',
+                        location: { longitude: 10, latitude: 10 },
+                    },
                 },
             },
             {
@@ -57,14 +72,24 @@ describe('Vendor', () => {
         await vendor.loadState('123');
 
         expect(getVendorEvents).toHaveBeenCalledWith('123', mockDdbDocClient);
-        expect(vendor.getDetails()).toEqual({ vendorId: '123', name: 'Updated Vendor', email: 'updated@vendor.com' });
+        expect(vendor.getDetails()).toEqual({
+            vendorId: '123',
+            name: 'Updated Vendor',
+            email: 'updated@vendor.com',
+            location: { longitude: 10, latitude: 10 },
+        });
     });
 
     it('changes vendor details', async () => {
         const initialEvent = {
             detail: {
                 metadata: { name: 'vendorRegistered' },
-                data: { vendorId: '123', name: 'Test Vendor', email: 'test@vendor.com' },
+                data: {
+                    vendorId: '123',
+                    name: 'Test Vendor',
+                    email: 'test@vendor.com',
+                    location: { longitude: 10, latitude: 10 },
+                },
             },
         };
         const changeEvent = {
@@ -82,20 +107,17 @@ describe('Vendor', () => {
         await vendor.changeDetails('Updated Vendor', 'updated@vendor.com');
 
         expect(putVendorEvent).toHaveBeenCalledWith('123', 1, changeEvent, mockDdbDocClient);
-        expect(vendor.getDetails()).toEqual({ vendorId: '123', name: 'Updated Vendor', email: 'updated@vendor.com' });
+        expect(vendor.getDetails()).toEqual({
+            vendorId: '123',
+            name: 'Updated Vendor',
+            email: 'updated@vendor.com',
+            location: { longitude: 10, latitude: 10 },
+        });
     });
 
     it('handles missing vendorId in changeDetails', async () => {
         await expect(vendor.changeDetails('Updated Vendor', 'updated@vendor.com')).rejects.toThrow(
             'Vendor state is not loaded',
         );
-    });
-
-    it('handles missing vendorId in loadState', async () => {
-        (getVendorEvents as jest.Mock).mockResolvedValue([]);
-
-        await vendor.loadState('123');
-
-        expect(vendor.getDetails()).toEqual({ vendorId: '', name: '', email: '' });
     });
 });

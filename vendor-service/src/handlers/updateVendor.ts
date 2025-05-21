@@ -23,19 +23,20 @@ export const handler = async (event: APIGatewayProxyEvent, context: Context): Pr
         if (
             typeof body.name !== 'string' &&
             typeof body.email !== 'string' &&
-            (typeof body.location.longitude !== 'number' || typeof body.location.latitude !== 'number')
+            typeof body.location?.longitude !== 'number' &&
+            typeof body.location?.latitude !== 'number'
         ) {
             return {
                 statusCode: 400,
                 body: JSON.stringify({
-                    message: 'name or email or location are required',
+                    message: 'name, email or location are required',
                 }),
             };
         }
 
         const vendor = new Vendor(ddbDocClient, context);
         await vendor.loadState(vendorId);
-        await vendor.changeDetails(body.name, body.email, body.location.longitude, body.location.latitude);
+        await vendor.changeDetails(body.name, body.email, body.location?.longitude, body.location?.latitude);
 
         return {
             statusCode: 200,

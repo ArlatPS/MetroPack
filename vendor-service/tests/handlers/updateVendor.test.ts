@@ -34,9 +34,12 @@ describe('Unit test for updateVendor handler', function () {
         const mockVendor = {
             loadState: jest.fn().mockReturnValue(undefined),
             changeDetails: jest.fn().mockReturnValue(undefined),
-            getDetails: jest
-                .fn()
-                .mockReturnValue({ vendorId: '123', name: 'Updated Vendor', email: 'updated@vendor.com' }),
+            getDetails: jest.fn().mockReturnValue({
+                vendorId: '123',
+                name: 'Updated Vendor',
+                email: 'updated@vendor.com',
+                location: { longitude: 10, latitude: 10 },
+            }),
         };
         (Vendor as jest.Mock).mockImplementation(() => mockVendor);
 
@@ -44,10 +47,20 @@ describe('Unit test for updateVendor handler', function () {
 
         expect(result.statusCode).toEqual(200);
         expect(result.body).toEqual(
-            JSON.stringify({ vendorId: '123', name: 'Updated Vendor', email: 'updated@vendor.com' }),
+            JSON.stringify({
+                vendorId: '123',
+                name: 'Updated Vendor',
+                email: 'updated@vendor.com',
+                location: { longitude: 10, latitude: 10 },
+            }),
         );
         expect(mockVendor.loadState).toHaveBeenCalledWith('123');
-        expect(mockVendor.changeDetails).toHaveBeenCalledWith('Updated Vendor', 'updated@vendor.com');
+        expect(mockVendor.changeDetails).toHaveBeenCalledWith(
+            'Updated Vendor',
+            'updated@vendor.com',
+            undefined,
+            undefined,
+        );
     });
 
     it('returns 400 if vendorId is missing', async () => {
@@ -91,7 +104,7 @@ describe('Unit test for updateVendor handler', function () {
         const result: APIGatewayProxyResult = await handler(event, mockContext);
 
         expect(result.statusCode).toEqual(400);
-        expect(result.body).toEqual(JSON.stringify({ message: 'name or email are required' }));
+        expect(result.body).toEqual(JSON.stringify({ message: 'name, email or location are required' }));
     });
 
     it('returns 500 on internal server error', async () => {

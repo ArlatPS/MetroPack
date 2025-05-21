@@ -106,15 +106,13 @@ export class Vendor {
         this.projectEvents(events);
     }
 
-    public async changeDetails(name: string, email: string, longitude: number, latitude: number): Promise<void> {
+    public async changeDetails(name: string, email: string, longitude?: number, latitude?: number): Promise<void> {
         if (!this.vendorId) {
             throw new Error('Vendor state is not loaded');
         }
+        const location = longitude && latitude ? { longitude, latitude } : undefined;
 
-        const event = createVendorDetailsChangedEvent(this.vendorId, this.context, name, email, {
-            longitude,
-            latitude,
-        });
+        const event = createVendorDetailsChangedEvent(this.vendorId, this.context, name, email, location);
 
         await putVendorEvent(this.vendorId, this.events.length, event, this.ddbDocClient);
 

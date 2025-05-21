@@ -19,7 +19,11 @@ describe('Unit test for registerVendor handler', function () {
         const event: APIGatewayProxyEvent = {
             httpMethod: 'post',
             pathParameters: {},
-            body: JSON.stringify({ name: 'Test Vendor', email: 'test@vendor.com' }),
+            body: JSON.stringify({
+                name: 'Test Vendor',
+                email: 'test@vendor.com',
+                location: { longitude: 10, latitude: 10 },
+            }),
             headers: {},
             isBase64Encoded: false,
             multiValueHeaders: {},
@@ -33,15 +37,27 @@ describe('Unit test for registerVendor handler', function () {
 
         const mockVendor = {
             register: jest.fn().mockReturnValue(undefined),
-            getDetails: jest.fn().mockReturnValue({ vendorId: '123', name: 'Test Vendor', email: 'test@vendor.com' }),
+            getDetails: jest.fn().mockReturnValue({
+                vendorId: '123',
+                name: 'Test Vendor',
+                email: 'test@vendor.com',
+                location: { longitude: 10, latitude: 10 },
+            }),
         };
         (Vendor as jest.Mock).mockImplementation(() => mockVendor);
 
         const result: APIGatewayProxyResult = await handler(event, mockContext);
 
         expect(result.statusCode).toEqual(200);
-        expect(result.body).toEqual(JSON.stringify({ vendorId: '123', name: 'Test Vendor', email: 'test@vendor.com' }));
-        expect(mockVendor.register).toHaveBeenCalledWith('Test Vendor', 'test@vendor.com');
+        expect(result.body).toEqual(
+            JSON.stringify({
+                vendorId: '123',
+                name: 'Test Vendor',
+                email: 'test@vendor.com',
+                location: { longitude: 10, latitude: 10 },
+            }),
+        );
+        expect(mockVendor.register).toHaveBeenCalledWith('Test Vendor', 'test@vendor.com', 10, 10);
     });
 
     it('returns 400 if name or email is missing', async () => {
@@ -63,7 +79,7 @@ describe('Unit test for registerVendor handler', function () {
         const result: APIGatewayProxyResult = await handler(event, mockContext);
 
         expect(result.statusCode).toEqual(400);
-        expect(result.body).toEqual(JSON.stringify({ message: 'name and email are required' }));
+        expect(result.body).toEqual(JSON.stringify({ message: 'name, email and location are required' }));
     });
 
     it('returns 500 on internal server error', async () => {

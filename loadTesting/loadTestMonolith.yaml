@@ -1,5 +1,5 @@
 config:
-  target: https://<EC2_INSTANCE_IP>
+  target: https://<EC2_INSTANCE_IP>:3000
   phases:
     - duration: 5
       arrivalRate: 1
@@ -32,7 +32,7 @@ scenarios:
           afterResponse: "extractOfferId"
 
       - get:
-          url: "vendor/{{ vendorId }}"
+          url: "/vendor/{{ vendorId }}"
           beforeRequest: "generateGetVendorRequest"
           afterResponse: "extractVendorLocation"
 

@@ -3,7 +3,9 @@
   "version": "1.0.0",
   "description": "Load Testing for MetroPack",
   "scripts": {
-    "test": "artillery run loadTest.yaml"
+    "test": "artillery run loadTest.yaml",
+    "test:monolith": "artillery run --record loadTestMonolith.yaml",
+    "test:monolith:lambda": "artillery run-lambda --memory-size 2048 --count 1 --record --region eu-central-1 loadTestMonolith.yaml"
   },
   "dependencies": {
     "artillery": "^2.0.23"

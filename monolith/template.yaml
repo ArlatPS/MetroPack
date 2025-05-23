@@ -103,9 +103,11 @@ Resources:
         Fn::Base64: !Sub |
           #!/bin/bash
           curl -sL https://rpm.nodesource.com/setup_18.x | bash -
-          yum install -y nodejs unzip awscli
+          yum install -y nodejs unzip awscli cronie
           aws s3 cp s3://metropack-builds/app.zip /home/ec2-user/app.zip
           unzip /home/ec2-user/app.zip -d /home/ec2-user/app
+          systemctl enable crond
+          systemctl start crond
           cd /home/ec2-user/app
           npm install
           npm run build
@@ -130,10 +132,20 @@ Resources:
           export EVENT_GENERATOR_JOB_TABLE=${MonolithEventGeneratorJobTable}
           export BUYER_TABLE=${MonolithBuyerTable}
           nohup node dist/index.js > app.log 2>&1 &
+      
+          cat << 'EOF' > /home/ec2-user/update_jobs.sh
+          #!/bin/bash
+          {
+            echo -n "[`date '+%Y-%m-%d %H:%M:%S'`] "
+            curl -o /dev/null -s -w "Total: %{time_total}s\n" -X POST http://localhost:3000/updateJobs
+          } >> /home/ec2-user/updateJobs.log 2>&1
+          EOF
+          chmod +x /home/ec2-user/update_jobs.sh
+      
           (crontab -l 2>/dev/null; echo "0 0 * * * curl -X POST http://localhost:3000/generateCityCapacity") | crontab -
           (crontab -l 2>/dev/null; echo "0 6 * * * curl -X POST http://localhost:3000/prepareJobs") | crontab -
           (crontab -l 2>/dev/null; echo "0 5 * * * curl -X POST http://localhost:3000/resetVehicles") | crontab -
-          (crontab -l 2>/dev/null; echo "* * * * * curl -X POST http://localhost:3000/updateJobs") | crontab -
+          (crontab -l 2>/dev/null; echo "* * * * * /home/ec2-user/update_jobs.sh") | crontab -
 
   MonolithVendorTable:
     Type: AWS::DynamoDB::Table

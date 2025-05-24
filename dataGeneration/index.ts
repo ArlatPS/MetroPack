@@ -2,13 +2,19 @@ import { DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { putItem } from "./dynamoDbDatasource";
 import { randomUUID } from "node:crypto";
-import { getNextWorkingDays } from "./dates";
-import { createVendorRegisteredEvent } from "./vendorEvent";
+import { getNextWorkingDays, getToday } from "./dates";
+import {
+  createParcelRegisteredEvent,
+  createVendorRegisteredEvent,
+  getRandomLocationInRange,
+} from "./events";
 
 const WAREHOUSE_TABLE = "MonolithWarehouseTable";
 const VEHICLE_TABLE = "MonolithVehicleTable";
 const CITY_TABLE = "MonolithCityTable";
-const VENDOR_TABLE = "VendorTable";
+const VENDOR_TABLE = "MonolithVendorTable";
+const PARCEL_TABLE = "MonolithParcelTable";
+const PICKUP_ORDER_TABLE = "MonolithPickupOrderTable";
 
 const VEHICLE_CAPACITY = 80;
 
@@ -28,8 +34,8 @@ const warehouses = [
       },
       range: 25,
     },
-    pickupVehicles: 40,
-    deliveryVehicles: 40,
+    pickupVehicles: 5,
+    deliveryVehicles: 5,
     basePrice: 5,
     vendors: [
       "8fd7eee0-4d40-4535-a48a-22dc817f9260",
@@ -55,8 +61,8 @@ const warehouses = [
       },
       range: 25,
     },
-    pickupVehicles: 40,
-    deliveryVehicles: 40,
+    pickupVehicles: 5,
+    deliveryVehicles: 5,
     basePrice: 5,
     vendors: [
       "9bc73806-b738-4684-b457-4b9ff1643a91",
@@ -82,8 +88,8 @@ const warehouses = [
       },
       range: 20,
     },
-    pickupVehicles: 20,
-    deliveryVehicles: 20,
+    pickupVehicles: 5,
+    deliveryVehicles: 5,
     basePrice: 7,
     vendors: [
       "b4467a76-f068-4ca9-bc90-8861a5f886dc",
@@ -109,8 +115,8 @@ const warehouses = [
       },
       range: 15,
     },
-    pickupVehicles: 10,
-    deliveryVehicles: 10,
+    pickupVehicles: 5,
+    deliveryVehicles: 5,
     basePrice: 10,
     vendors: [
       "8ea4638a-eade-4732-8e52-52c7ccdacbb4",
@@ -184,23 +190,71 @@ async function main(): Promise<void> {
     }
 
     for (const vendorId of warehouse.vendors) {
+      const vendorRegisteredEvent = createVendorRegisteredEvent(
+        vendorId,
+        warehouse.warehouse.location,
+        warehouse.warehouse.range
+      );
       await putItem(
         {
           vendorId,
           eventOrder: 0,
-          event: JSON.stringify(
-            createVendorRegisteredEvent(
-              vendorId,
-              warehouse.warehouse.location,
-              warehouse.warehouse.range
-            )
-          ),
+          event: JSON.stringify(vendorRegisteredEvent),
         },
         VENDOR_TABLE,
         ddbDocClient
       );
       console.log("Vendor created:", vendorId);
       await sleep();
+      for (let i = 0; i < 5; i++) {
+        const parcelId = randomUUID();
+        const deliveryDate = getNextWorkingDays(1)[0];
+        //random city
+        const deliveryWarehouse =
+          warehouses[Math.floor(Math.random() * warehouses.length)];
+
+        const parcelEvent = createParcelRegisteredEvent(
+          parcelId,
+          getToday(),
+          vendorRegisteredEvent.detail.data.location,
+          [
+            {
+              cityCodename: warehouse.warehouse.cityCodename,
+              warehouseId: warehouse.warehouse.warehouseId,
+            },
+            {
+              cityCodename: deliveryWarehouse.warehouse.cityCodename,
+              warehouseId: deliveryWarehouse.warehouse.warehouseId,
+            },
+          ],
+          deliveryDate,
+          getRandomLocationInRange(
+            deliveryWarehouse.warehouse.location,
+            deliveryWarehouse.warehouse.range
+          )
+        );
+        const pickupOrder = {
+          parcelId,
+          date: getToday(),
+          location: vendorRegisteredEvent.detail.data.location,
+          warehouse: warehouse.warehouse.location,
+          warehouseId: warehouse.warehouse.warehouseId,
+        };
+
+        await putItem(
+          {
+            parcelId,
+            eventOrder: 0,
+            event: JSON.stringify(parcelEvent),
+          },
+          PARCEL_TABLE,
+          ddbDocClient
+        );
+
+        await putItem(pickupOrder, PICKUP_ORDER_TABLE, ddbDocClient);
+        console.log("Parcel created:", parcelId);
+        await sleep();
+      }
     }
   }
 }

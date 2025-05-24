@@ -35,7 +35,51 @@ export function createVendorRegisteredEvent(
   };
 }
 
-function getRandomLocationInRange(
+export function createParcelRegisteredEvent(
+  parcelId: string,
+  pickupDate: string,
+  pickupLocation: {
+    longitude: number;
+    latitude: number;
+  },
+  transitWarehouses: { cityCodename: string; warehouseId: string }[],
+  deliveryDate: string,
+  deliveryLocation: {
+    longitude: number;
+    latitude: number;
+  }
+) {
+  return {
+    version: "1",
+    id: randomUUID(),
+    detailType: "parcelService.parcelRegistered",
+    source: "data generation",
+    time: new Date().toISOString(),
+    region: "eu-central-1",
+    resources: ["data generation"],
+    detail: {
+      metadata: {
+        domain: "customerService",
+        subdomain: "parcel",
+        service: "parcelService",
+        category: "domainEvent",
+        type: "data",
+        name: "parcelRegistered",
+      },
+      data: {
+        parcelId,
+        time: new Date().toISOString(),
+        pickupDate,
+        pickupLocation,
+        transitWarehouses,
+        deliveryDate,
+        deliveryLocation,
+      },
+    },
+  };
+}
+
+export function getRandomLocationInRange(
   location: { latitude: number; longitude: number },
   rangeKm: number
 ): { latitude: number; longitude: number } {

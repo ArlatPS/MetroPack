@@ -19,7 +19,7 @@ export class BillingController {
             }
 
             const bills = await this.customerModel.getBills(vendorId);
-            res.status(200).json(bills);
+            res.status(200).json({ bills });
         } catch (err) {
             console.error(err);
             res.status(500).json({ message: 'Internal server error' });
@@ -40,7 +40,7 @@ export class BillingController {
             }
 
             const bill = await this.customerModel.getBillDetails(vendorId, month);
-            res.status(200).json(bill);
+            res.status(200).json({ bill });
         } catch (err) {
             console.error(err);
             res.status(500).json({ message: 'Internal server error' });

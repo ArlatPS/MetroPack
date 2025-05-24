@@ -64,7 +64,13 @@ const parcelManagementController = new ParcelManagementController(
 );
 app.use('/', parcelManagementRoutes(parcelManagementController));
 
-const acceptOfferSagaModel = new AcceptOfferSagaModel(offerModel, customerModel, parcelModel, ddbDocClient);
+const acceptOfferSagaModel = new AcceptOfferSagaModel(
+    offerModel,
+    customerModel,
+    parcelModel,
+    parcelManagementModel,
+    ddbDocClient,
+);
 const buyerController = new BuyerController(acceptOfferSagaModel, ddbDocClient);
 app.use('/', buyerRoutes(buyerController));
 

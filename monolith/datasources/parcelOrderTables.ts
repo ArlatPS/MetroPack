@@ -18,8 +18,8 @@ export async function getPickupOrders(
     date: string,
     limit: number,
     ddbDocClient: DynamoDBDocumentClient,
-    startKey?: string,
-): Promise<{ orders: Order[]; lastKey?: string }> {
+    startKey?: getOrderLastKey,
+): Promise<{ orders: Order[]; lastKey?: getOrderLastKey }> {
     const pickupOrderTable = process.env.PICKUP_ORDER_TABLE;
 
     if (!pickupOrderTable) {
@@ -38,8 +38,8 @@ export async function getDeliveryOrders(
     date: string,
     limit: number,
     ddbDocClient: DynamoDBDocumentClient,
-    startKey?: string,
-): Promise<{ orders: Order[]; lastKey?: string }> {
+    startKey?: getOrderLastKey,
+): Promise<{ orders: Order[]; lastKey?: getOrderLastKey }> {
     const deliveryOrderTable = process.env.DELIVERY_ORDER_TABLE;
 
     if (!deliveryOrderTable) {
@@ -53,14 +53,20 @@ export async function getDeliveryOrders(
     };
 }
 
+export interface getOrderLastKey {
+    warehouseId: string;
+    date: string;
+    parcelId: string;
+}
+
 async function getOrders(
     tableName: string,
     warehouseId: string,
     date: string,
     limit: number,
     ddbDocClient: DynamoDBDocumentClient,
-    startKey?: string,
-): Promise<{ orders: object[]; lastKey?: string }> {
+    startKey?: getOrderLastKey,
+): Promise<{ orders: object[]; lastKey?: getOrderLastKey }> {
     const params = {
         TableName: tableName,
         IndexName: 'WarehouseDateIndex',
@@ -73,14 +79,14 @@ async function getOrders(
             ':date': date,
         },
         Limit: limit,
-        ExclusiveStartKey: startKey ? { parcelId: startKey } : undefined,
+        ExclusiveStartKey: startKey ? startKey : undefined,
     };
 
     const data = await ddbDocClient.send(new QueryCommand(params));
 
     return {
         orders: data.Items || [],
-        lastKey: data.LastEvaluatedKey ? data.LastEvaluatedKey.parcelId : undefined,
+        lastKey: data.LastEvaluatedKey ? (data.LastEvaluatedKey as getOrderLastKey) : undefined,
     };
 }
 

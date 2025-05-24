@@ -14,11 +14,17 @@ const VEHICLE_TABLE = "MonolithVehicleTable";
 const CITY_TABLE = "MonolithCityTable";
 const VENDOR_TABLE = "MonolithVendorTable";
 const PARCEL_TABLE = "MonolithParcelTable";
-const PICKUP_ORDER_TABLE = "MonolithPickupOrderTable";
+const PICKUP_JOB_TABLE = "MonolithPickupJobTable";
+const EVENT_GENERATOR_JOB_TABLE = "MonolithEventGeneratorJobTable";
+const EVENT_GENERATOR_VEHICLE_TABLE = "MonolithEventGeneratorVehicleTable";
 
 const VEHICLE_CAPACITY = 80;
 
-async function sleep(ms: number = 500): Promise<void> {
+const PARCELS_PER_VENDOR = 10;
+
+const PARCELS_PER_JOB = 5;
+
+async function sleep(ms: number = 200): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
@@ -141,11 +147,14 @@ async function main(): Promise<void> {
     await putItem(warehouse.warehouse, WAREHOUSE_TABLE, ddbDocClient);
     console.log("Warehouse created:", warehouse.warehouse);
 
+    const pickupVehicles = [];
+
     for (let i = 0; i < warehouse.pickupVehicles; i++) {
+      const pickupVehicleId = randomUUID();
       await putItem(
         {
           capacity: 28800,
-          vehicleId: randomUUID(),
+          vehicleId: pickupVehicleId,
           type: "PICKUP",
           warehouseId: warehouse.warehouse.warehouseId,
         },
@@ -153,6 +162,7 @@ async function main(): Promise<void> {
         ddbDocClient
       );
       console.log("Pickup vehicle created:", i);
+      pickupVehicles.push(pickupVehicleId);
       await sleep();
     }
     for (let i = 0; i < warehouse.deliveryVehicles; i++) {
@@ -206,53 +216,93 @@ async function main(): Promise<void> {
       );
       console.log("Vendor created:", vendorId);
       await sleep();
-      for (let i = 0; i < 5; i++) {
-        const parcelId = randomUUID();
-        const deliveryDate = getNextWorkingDays(1)[0];
-        //random city
-        const deliveryWarehouse =
-          warehouses[Math.floor(Math.random() * warehouses.length)];
+      for (let i = 0; i < PARCELS_PER_VENDOR / PARCELS_PER_JOB; i++) {
+        const orders = [];
 
-        const parcelEvent = createParcelRegisteredEvent(
-          parcelId,
-          getToday(),
-          vendorRegisteredEvent.detail.data.location,
-          [
+        for (let j = 0; j < PARCELS_PER_JOB; j++) {
+          const parcelId = randomUUID();
+          const deliveryDate = getNextWorkingDays(1)[0];
+          const deliveryWarehouse =
+            warehouses[Math.floor(Math.random() * warehouses.length)];
+
+          const parcelEvent = createParcelRegisteredEvent(
+            parcelId,
+            getToday(),
+            vendorRegisteredEvent.detail.data.location,
+            [
+              {
+                cityCodename: warehouse.warehouse.cityCodename,
+                warehouseId: warehouse.warehouse.warehouseId,
+              },
+              {
+                cityCodename: deliveryWarehouse.warehouse.cityCodename,
+                warehouseId: deliveryWarehouse.warehouse.warehouseId,
+              },
+            ],
+            deliveryDate,
+            getRandomLocationInRange(
+              deliveryWarehouse.warehouse.location,
+              deliveryWarehouse.warehouse.range
+            )
+          );
+          const pickupOrder = {
+            parcelId,
+            date: getToday(),
+            location: vendorRegisteredEvent.detail.data.location,
+            warehouse: warehouse.warehouse.location,
+            warehouseId: warehouse.warehouse.warehouseId,
+          };
+
+          await putItem(
             {
-              cityCodename: warehouse.warehouse.cityCodename,
-              warehouseId: warehouse.warehouse.warehouseId,
+              parcelId,
+              eventOrder: 0,
+              event: JSON.stringify(parcelEvent),
             },
-            {
-              cityCodename: deliveryWarehouse.warehouse.cityCodename,
-              warehouseId: deliveryWarehouse.warehouse.warehouseId,
-            },
-          ],
-          deliveryDate,
-          getRandomLocationInRange(
-            deliveryWarehouse.warehouse.location,
-            deliveryWarehouse.warehouse.range
-          )
-        );
-        const pickupOrder = {
-          parcelId,
+            PARCEL_TABLE,
+            ddbDocClient
+          );
+
+          orders.push(pickupOrder);
+          console.log("Parcel created:", parcelId);
+          await sleep();
+        }
+        const pickupJob = {
+          jobId: randomUUID(),
           date: getToday(),
-          location: vendorRegisteredEvent.detail.data.location,
-          warehouse: warehouse.warehouse.location,
+          duration: 1800,
+          status: "PENDING",
+          steps: orders.map((order, index) => ({
+            location: order.location,
+            parcelId: order.parcelId,
+            arrivalTime: 120 + index * 300, // 2 minutes + 5 minute per parcel
+          })),
+          vehicleId:
+            pickupVehicles[Math.floor(Math.random() * pickupVehicles.length)],
           warehouseId: warehouse.warehouse.warehouseId,
         };
 
+        await putItem(pickupJob, PICKUP_JOB_TABLE, ddbDocClient);
         await putItem(
           {
-            parcelId,
-            eventOrder: 0,
-            event: JSON.stringify(parcelEvent),
+            jobId: pickupJob.jobId,
+            duration: pickupJob.duration,
+            vehicleId: pickupJob.vehicleId,
+            status: "PENDING",
+            type: "PICKUP",
+            warehouseId: warehouse.warehouse.warehouseId,
+            steps: pickupJob.steps,
           },
-          PARCEL_TABLE,
+          EVENT_GENERATOR_JOB_TABLE,
+          ddbDocClient
+        );
+        await putItem(
+          { vehicleId: pickupJob.vehicleId },
+          EVENT_GENERATOR_VEHICLE_TABLE,
           ddbDocClient
         );
 
-        await putItem(pickupOrder, PICKUP_ORDER_TABLE, ddbDocClient);
-        console.log("Parcel created:", parcelId);
+        console.log("pickup job created:", pickupJob.jobId);
         await sleep();
       }
     }

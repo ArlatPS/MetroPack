@@ -20,11 +20,11 @@ const EVENT_GENERATOR_VEHICLE_TABLE = "MonolithEventGeneratorVehicleTable";
 
 const VEHICLE_CAPACITY = 80;
 
-const PARCELS_PER_VENDOR = 10;
+const PARCELS_PER_VENDOR = 40;
 
-const PARCELS_PER_JOB = 5;
+const PARCELS_PER_JOB = 10;
 
-async function sleep(ms: number = 200): Promise<void> {
+async function sleep(ms: number = 25): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
@@ -40,8 +40,8 @@ const warehouses = [
       },
       range: 25,
     },
-    pickupVehicles: 5,
-    deliveryVehicles: 5,
+    pickupVehicles: 40,
+    deliveryVehicles: 20,
     basePrice: 5,
     vendors: [
       "8fd7eee0-4d40-4535-a48a-22dc817f9260",
@@ -67,8 +67,8 @@ const warehouses = [
       },
       range: 25,
     },
-    pickupVehicles: 5,
-    deliveryVehicles: 5,
+    pickupVehicles: 40,
+    deliveryVehicles: 20,
     basePrice: 5,
     vendors: [
       "9bc73806-b738-4684-b457-4b9ff1643a91",
@@ -94,8 +94,8 @@ const warehouses = [
       },
       range: 20,
     },
-    pickupVehicles: 5,
-    deliveryVehicles: 5,
+    pickupVehicles: 40,
+    deliveryVehicles: 20,
     basePrice: 7,
     vendors: [
       "b4467a76-f068-4ca9-bc90-8861a5f886dc",
@@ -121,8 +121,8 @@ const warehouses = [
       },
       range: 15,
     },
-    pickupVehicles: 5,
-    deliveryVehicles: 5,
+    pickupVehicles: 40,
+    deliveryVehicles: 20,
     basePrice: 10,
     vendors: [
       "8ea4638a-eade-4732-8e52-52c7ccdacbb4",
@@ -148,6 +148,7 @@ async function main(): Promise<void> {
     console.log("Warehouse created:", warehouse.warehouse);
 
     const pickupVehicles = [];
+    let lastUsedVehicleIndex = 0;
 
     for (let i = 0; i < warehouse.pickupVehicles; i++) {
       const pickupVehicleId = randomUUID();
@@ -267,6 +268,10 @@ async function main(): Promise<void> {
           console.log("Parcel created:", parcelId);
           await sleep();
         }
+        const pickupVehicle = pickupVehicles[lastUsedVehicleIndex];
+        lastUsedVehicleIndex =
+          (lastUsedVehicleIndex + 1) % pickupVehicles.length;
+
         const pickupJob = {
           jobId: randomUUID(),
           date: getToday(),
@@ -275,10 +280,9 @@ async function main(): Promise<void> {
           steps: orders.map((order, index) => ({
             location: order.location,
             parcelId: order.parcelId,
-            arrivalTime: 120 + index * 300, // 2 minutes + 5 minute per parcel
+            arrivalTime: 120 + index * 120, // 2 minutes + 2 minutes per parcel
           })),
-          vehicleId:
-            pickupVehicles[Math.floor(Math.random() * pickupVehicles.length)],
+          vehicleId: pickupVehicle,
           warehouseId: warehouse.warehouse.warehouseId,
         };
 

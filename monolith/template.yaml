@@ -93,12 +93,12 @@ Resources:
   ExpressInstance:
     Type: AWS::EC2::Instance
     Properties:
-      InstanceType: t2.micro
+      InstanceType: m8g.large
       KeyName: !Ref KeyName
       SecurityGroups:
         - !Ref ExpressSecurityGroup
       IamInstanceProfile: !Ref ExpressInstanceProfile
-      ImageId: ami-02b7d5b1e55a7b5f1
+      ImageId: ami-0cd3f0d8daa83abeb
       UserData:
         Fn::Base64: !Sub |
           #!/bin/bash

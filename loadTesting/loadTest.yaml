@@ -1,9 +1,13 @@
 config:
   target: http://localhost
   phases:
-    - duration: 5
+    - duration: 60
       arrivalRate: 1
-      name: "Minimal"
+      rampTo: 100
+      name: "Warmup"
+    - duration: 300
+      arrivalRate: 100
+      name: "Steady"
   plugins:
     metrics-by-endpoint: {}
   processor: "./processor.js"

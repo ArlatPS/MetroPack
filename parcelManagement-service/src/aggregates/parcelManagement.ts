@@ -12,6 +12,7 @@ import {
     getDeleteDeliveryOrderTransactItem,
     getDeletePickupOrderTransactItem,
     getDeliveryOrders,
+    getOrderLastKey,
     getPickupOrders,
     putDeliveryOrder,
     putPickupOrder,
@@ -74,7 +75,7 @@ export class ParcelManagement {
         }
 
         let init = true;
-        let lastPickupOrderKey: string | undefined;
+        let lastPickupOrderKey: getOrderLastKey | undefined;
 
         while (init || lastPickupOrderKey) {
             init = false;
@@ -130,7 +131,7 @@ export class ParcelManagement {
         }
 
         let init = true;
-        let lastDeliveryOrderKey: string | undefined;
+        let lastDeliveryOrderKey: getOrderLastKey | undefined;
 
         while (init || lastDeliveryOrderKey) {
             init = false;

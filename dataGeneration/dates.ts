@@ -13,6 +13,10 @@ export function getNextWorkingDays(numOfDays: number): string[] {
   return dates.map((date) => format(date, "dd-MM-yyyy"));
 }
 
+export function getToday(): string {
+  return format(new Date(), "dd-MM-yyyy");
+}
+
 function getNextWorkingDay(date: Date): Date {
   let nextDate = date;
   while (isWeekend(nextDate)) {

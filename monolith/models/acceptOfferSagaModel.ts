@@ -6,6 +6,7 @@ import { OfferModel } from './offerModel';
 import { CustomerModel } from './customerModel';
 import { OfferWithDetails } from '../datasources/offerTable';
 import { ParcelModel } from './parcelModel';
+import { ParcelManagementModel } from './parcelManagementModel';
 
 import { Location } from '../helpers/locationHelpers';
 
@@ -14,6 +15,7 @@ export class AcceptOfferSagaModel {
     private readonly offerModel: OfferModel;
     private readonly customerModel: CustomerModel;
     private readonly parcelModel: ParcelModel;
+    private readonly parcelManagementModel: ParcelManagementModel;
 
     private compensatingActions: (() => Promise<void>)[];
     private compensatingActionsFailed = false;
@@ -22,11 +24,13 @@ export class AcceptOfferSagaModel {
         offerModel: OfferModel,
         customerModel: CustomerModel,
         parcelModel: ParcelModel,
+        parcelManagementModel: ParcelManagementModel,
         ddbDocClient: DynamoDBDocumentClient,
     ) {
         this.offerModel = offerModel;
         this.customerModel = customerModel;
         this.parcelModel = parcelModel;
+        this.parcelManagementModel = parcelManagementModel;
         this.ddbDocClient = ddbDocClient;
         this.compensatingActions = [];
     }
@@ -145,6 +149,14 @@ export class AcceptOfferSagaModel {
             offer.deliveryDate,
             new Location(deliveryLocation.longitude, deliveryLocation.latitude),
             parcelId,
+        );
+        const parcel = this.parcelModel.getDetails();
+        await this.parcelManagementModel.createPickupOrder(
+            parcel.parcelId,
+            parcel.transitWarehouses[0].warehouseId,
+            parcel.pickupDate,
+            parcel.pickupLocation,
+            parcel.transitWarehouses[0],
         );
     }
 }

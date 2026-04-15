@@ -11,9 +11,13 @@ The thesis investigates the feasibility, trade-offs, and empirical performance d
 
 ## Load Testing Results - mean response times (ms) and 95th percentile response times (ms)
 
-Serverless             |  Monolith
-:-------------------------:|:-------------------------:
-![Serverless](./loadTesting/results/serverless.png) |  ![Monolith](./loadTesting/results/monolith.png)
+### Serverless microservices
+
+![Serverless](./loadTesting/results/serverless.png)
+
+### Monolith
+
+ ![Monolith](./loadTesting/results/monolith.png)
 
 ---
 

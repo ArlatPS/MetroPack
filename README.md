@@ -33,6 +33,7 @@ Serverless             |  Monolith
 | **Routing engine** | OpenRouteService + VROOM |
 | **Load testing** | Artillery |
 | **Testing** | Jest |
+| **CI** | GitHub Actions |
 
 ---
 
